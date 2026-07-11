@@ -21,6 +21,14 @@ const userSchema = new mongoose.Schema(
       required: [true, 'Password is required'],
       minlength: 6,
     },
+    rating: {
+      type: Number,
+      default: 0,
+    },
+    completedTrades: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true, // auto adds createdAt & updatedAt

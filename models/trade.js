@@ -24,12 +24,12 @@ const tradeSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'accepted', 'rejected', 'completed'],
+      enum: ['pending', 'accepted', 'rejected', 'cancelled', 'completed', 'expired'],
       default: 'pending',
     },
   },
   {
-    timestamps: true, // auto adds createdAt & updatedAt
+    timestamps: true,
   }
 );
 
