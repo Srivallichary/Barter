@@ -15,21 +15,48 @@ const itemSchema = new mongoose.Schema(
     category: {
       type: String,
       required: [true, 'Category is required'],
-      trim: true,
+      enum: [
+        'Books',
+        'Electronics',
+        'Clothing',
+        'Furniture',
+        'Sports',
+        'Accessories',
+        'Home Appliances',
+        'Others',
+      ],
     },
-    image: {
-      type: String, // stores the file path/URL of uploaded image
-      default: '',
+    condition: {
+  type: String,
+  enum: ['New', 'Like New', 'Good', 'Fair', 'Used', 'Refurbished'],
+  default: 'Good',
+    },
+    images: {
+      type: [String], // array of file paths/URLs, supports multiple images
+      default: [],
     },
     owner: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User', // links this item to a User document
+      ref: 'User',
       required: true,
     },
     status: {
       type: String,
       enum: ['available', 'traded', 'pending'],
       default: 'available',
+    },
+    location: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    tags: {
+      type: [String],
+      default: [],
+    },
+    estimatedValue: {
+      type: Number,
+      default: null,
     },
   },
   {
@@ -38,9 +65,11 @@ const itemSchema = new mongoose.Schema(
 );
 
 // Indexes for faster search/filtering
-itemSchema.index({ title: 'text', description: 'text' }); // enables text search
-itemSchema.index({ category: 1 }); // faster filtering by category
-itemSchema.index({ owner: 1 }); // faster lookup of items by owner
+itemSchema.index({ title: 'text', description: 'text', tags: 'text' });
+itemSchema.index({ category: 1 });
+itemSchema.index({ condition: 1 });
+itemSchema.index({ owner: 1 });
+itemSchema.index({ status: 1 });
 
 const Item = mongoose.model('Item', itemSchema);
 
