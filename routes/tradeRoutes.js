@@ -1,4 +1,5 @@
 const express = require("express");
+const auth = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -11,18 +12,18 @@ const {
 } = require("../controllers/tradeController");
 
 // Create Trade Request
-router.post("/", createTrade);
+router.post("/", auth, createTrade);
 
 // Get Trades for a User
-router.get("/user/:userId", getUserTrades);
+router.get("/user/:userId", auth, getUserTrades);
 
 // Accept Trade
-router.put("/:id/accept", acceptTrade);
+router.put("/:id/accept", auth, acceptTrade);
 
 // Reject Trade
-router.put("/:id/reject", rejectTrade);
+router.put("/:id/reject", auth, rejectTrade);
 
 // Complete Trade
-router.put("/:id/complete", completeTrade);
+router.put("/:id/complete", auth, completeTrade);
 
 module.exports = router;

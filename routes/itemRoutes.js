@@ -1,5 +1,6 @@
 const express = require("express");
 const upload = require("../middleware/upload");
+const auth = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -13,21 +14,21 @@ const {
 } = require("../controllers/itemController");
 
 // Create Item
-router.post("/", upload.single("image"), createItem);
+router.post("/", auth, upload.single("image"), createItem);
 
 // Get All Items
 router.get("/", getAllItems);
 
 // Get Smart Matches
-router.get("/matches/:id", getSmartMatches);
+router.get("/matches/:id", auth, getSmartMatches);
 
 // Get Single Item
 router.get("/:id", getItemById);
 
 // Update Item
-router.put("/:id", updateItem);
+router.put("/:id", auth, updateItem);
 
 // Delete Item
-router.delete("/:id", deleteItem);
+router.delete("/:id", auth, deleteItem);
 
 module.exports = router;

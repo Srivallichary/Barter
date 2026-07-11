@@ -6,6 +6,9 @@ const authRoutes = require("./routes/authRoutes");
 const itemRoutes = require("./routes/itemRoutes");
 const tradeRoutes = require("./routes/tradeRoutes");
 const userRoutes = require("./routes/userRoutes");
+const wishlistRoutes = require("./routes/wishlistRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
+const messageRoutes = require("./routes/messageRoutes");
 
 connectDB();
 
@@ -20,6 +23,9 @@ app.use("/api/auth", authRoutes);
 app.use("/api/items", itemRoutes);
 app.use("/api/trades", tradeRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/wishlist", wishlistRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/messages", messageRoutes);
 
 // Test Route
 app.get("/", (req, res) => {

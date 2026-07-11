@@ -13,9 +13,9 @@ const profile = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    res.status(200).json({ success: true, user });
+    return res.status(200).json({ success: true, message: "Profile retrieved successfully", data: { user } });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message || "Failed to fetch profile" });
   }
 };
 
@@ -26,9 +26,9 @@ const profile = async (req, res) => {
  */
 const ratings = async (req, res) => {
   try {
-    res.status(200).json({ success: true, ratings: [], message: "Ratings not implemented" });
+    return res.status(200).json({ success: true, message: "Ratings not implemented", data: { ratings: [] } });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message || "Failed to fetch ratings" });
   }
 };
 

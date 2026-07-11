@@ -1,5 +1,8 @@
+const mongoose = require("mongoose");
 const Trade = require("../models/trade");
 const Item = require("../models/item");
+
+const getRequesterId = (req) => req.user?.userId || req.user?.id || req.user?._id;
 
 /**
  * @desc    Create a trade request
@@ -8,22 +11,42 @@ const Item = require("../models/item");
  */
 const createTrade = async (req, res) => {
     try {
+        const requesterId = getRequesterId(req);
+
+        if (!requesterId) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication required"
+            });
+        }
+
         const {
-            fromUser,
             toUser,
             offeredItem,
             requestedItem
         } = req.body;
 
-        // Check required fields
-        if (!fromUser || !toUser || !offeredItem || !requestedItem) {
+        if (!toUser || !offeredItem || !requestedItem) {
             return res.status(400).json({
                 success: false,
                 message: "Please provide all required fields"
             });
         }
 
-        // Check if both items exist
+        if (String(offeredItem) === String(requestedItem)) {
+            return res.status(409).json({
+                success: false,
+                message: "You cannot trade an item with itself"
+            });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(offeredItem) || !mongoose.Types.ObjectId.isValid(requestedItem) || !mongoose.Types.ObjectId.isValid(toUser)) {
+            return res.status(422).json({
+                success: false,
+                message: "Invalid item or user id"
+            });
+        }
+
         const offered = await Item.findById(offeredItem);
         const requested = await Item.findById(requestedItem);
 
@@ -34,42 +57,38 @@ const createTrade = async (req, res) => {
             });
         }
 
-        // Check if items are available
-        if (
-            offered.status !== "available" ||
-            requested.status !== "available"
-        ) {
+        if (String(offered.owner) !== String(requesterId)) {
+            return res.status(403).json({
+                success: false,
+                message: "You can only trade items you own"
+            });
+        }
+
+        if (offered.status !== "available" || requested.status !== "available") {
             return res.status(400).json({
                 success: false,
                 message: "One or both items are not available for trade"
             });
         }
 
-        // Create trade request
         const trade = await Trade.create({
-            fromUser,
+            fromUser: requesterId,
             toUser,
             offeredItem,
-            requestedItem
+            requestedItem,
+            status: "pending"
         });
 
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             message: "Trade request created successfully",
-            trade
+            data: { trade }
         });
 
-        if (offeredItem === requestedItem) {
-    return res.status(400).json({
-        success: false,
-        message: "You cannot trade an item with itself"
-    });
-}
-
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || "Failed to create trade"
         });
     }
 };
@@ -82,27 +101,41 @@ const createTrade = async (req, res) => {
  */
 const getUserTrades = async (req, res) => {
     try {
+        const requesterId = getRequesterId(req);
+
+        if (!requesterId) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication required"
+            });
+        }
+
+        const userId = req.params.userId || requesterId;
+
         const trades = await Trade.find({
             $or: [
-                { fromUser: req.params.userId },
-                { toUser: req.params.userId }
+                { fromUser: userId },
+                { toUser: userId }
             ]
         })
         .populate("fromUser", "name email")
         .populate("toUser", "name email")
-        .populate("offeredItem", "title category status")
-        .populate("requestedItem", "title category status");
+        .populate("offeredItem", "title category status images owner")
+        .populate("requestedItem", "title category status images owner");
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
-            count: trades.length,
-            trades
+            message: "Trades retrieved successfully",
+            data: {
+                trades,
+                count: trades.length
+            }
         });
 
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || "Failed to fetch trades"
         });
     }
 };
@@ -114,7 +147,15 @@ const getUserTrades = async (req, res) => {
  */
 const acceptTrade = async (req, res) => {
     try {
-        // Find trade
+        const requesterId = getRequesterId(req);
+
+        if (!requesterId) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication required"
+            });
+        }
+
         const trade = await Trade.findById(req.params.id);
 
         if (!trade) {
@@ -124,7 +165,13 @@ const acceptTrade = async (req, res) => {
             });
         }
 
-        // Check if trade is still pending
+        if (String(trade.toUser) !== String(requesterId)) {
+            return res.status(403).json({
+                success: false,
+                message: "Only the recipient can accept this trade"
+            });
+        }
+
         if (trade.status !== "pending") {
             return res.status(400).json({
                 success: false,
@@ -132,21 +179,19 @@ const acceptTrade = async (req, res) => {
             });
         }
 
-        // Update trade status
         trade.status = "accepted";
-
         await trade.save();
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             message: "Trade accepted successfully",
-            trade
+            data: { trade }
         });
 
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || "Failed to accept trade"
         });
     }
 };
@@ -158,7 +203,15 @@ const acceptTrade = async (req, res) => {
  */
 const rejectTrade = async (req, res) => {
     try {
-        // Find trade
+        const requesterId = getRequesterId(req);
+
+        if (!requesterId) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication required"
+            });
+        }
+
         const trade = await Trade.findById(req.params.id);
 
         if (!trade) {
@@ -168,7 +221,13 @@ const rejectTrade = async (req, res) => {
             });
         }
 
-        // Check if trade is still pending
+        if (String(trade.toUser) !== String(requesterId)) {
+            return res.status(403).json({
+                success: false,
+                message: "Only the recipient can reject this trade"
+            });
+        }
+
         if (trade.status !== "pending") {
             return res.status(400).json({
                 success: false,
@@ -176,21 +235,19 @@ const rejectTrade = async (req, res) => {
             });
         }
 
-        // Update trade status
         trade.status = "rejected";
-
         await trade.save();
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             message: "Trade rejected successfully",
-            trade
+            data: { trade }
         });
 
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || "Failed to reject trade"
         });
     }
 };
@@ -202,7 +259,15 @@ const rejectTrade = async (req, res) => {
  */
 const completeTrade = async (req, res) => {
     try {
-        // Find trade
+        const requesterId = getRequesterId(req);
+
+        if (!requesterId) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication required"
+            });
+        }
+
         const trade = await Trade.findById(req.params.id);
 
         if (!trade) {
@@ -212,7 +277,13 @@ const completeTrade = async (req, res) => {
             });
         }
 
-        // Trade must be accepted before completion
+        if (String(trade.toUser) !== String(requesterId) && String(trade.fromUser) !== String(requesterId)) {
+            return res.status(403).json({
+                success: false,
+                message: "You are not authorized to complete this trade"
+            });
+        }
+
         if (trade.status !== "accepted") {
             return res.status(400).json({
                 success: false,
@@ -220,11 +291,9 @@ const completeTrade = async (req, res) => {
             });
         }
 
-        // Update trade status
         trade.status = "completed";
         await trade.save();
 
-        // Update both items
         await Item.findByIdAndUpdate(trade.offeredItem, {
             status: "traded"
         });
@@ -233,16 +302,16 @@ const completeTrade = async (req, res) => {
             status: "traded"
         });
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             message: "Trade completed successfully",
-            trade
+            data: { trade }
         });
 
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || "Failed to complete trade"
         });
     }
 };
