@@ -22,7 +22,7 @@ const sendEmailOtp = async (email, otp) => {
     const transporter = nodemailer.createTransport({
         host,
         port,
-        secure: port === 465, // true for 465, false for other ports
+        secure: port === 465,
         auth: {
             user,
             pass
@@ -95,7 +95,7 @@ const sendOtp = async (req, res) => {
             { upsert: true, new: true }
         );
 
-        // Send OTP
+        // Send OTP via email or log to console
         await sendEmailOtp(email, otp);
 
         res.status(200).json({

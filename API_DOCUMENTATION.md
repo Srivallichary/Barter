@@ -1,6 +1,6 @@
 # Barter — Backend API Documentation
 
-This document explains how to set up and use the backend (database + authentication) built by Member 3.
+⚠️ This document is updated as the backend evolves — always check the "Last updated" date at the bottom.
 
 ---
 
@@ -49,15 +49,15 @@ Protected routes require a JWT token sent in the request header:
 Authorization: Bearer <token>
 ```
 
-You get this token from the `/api/login` response after a successful login.
+You get this token from the `/api/auth/login` response after a successful login.
 
 ---
 
-## Endpoints
+## Auth Endpoints
 
 ### 1. Register a new user
 
-**POST** `/api/register`
+**POST** `/api/auth/register`
 
 **Body (JSON):**
 ```json
@@ -73,7 +73,7 @@ You get this token from the `/api/login` response after a successful login.
 {
   "success": true,
   "message": "User registered successfully",
-  "data": {
+  "user": {
     "id": "64f1a2b3c4d5e6f7g8h9i0j1",
     "name": "Alice",
     "email": "alice@example.com"
@@ -90,7 +90,7 @@ You get this token from the `/api/login` response after a successful login.
 
 ### 2. Login
 
-**POST** `/api/login`
+**POST** `/api/auth/login`
 
 **Body (JSON):**
 ```json
@@ -125,7 +125,7 @@ You get this token from the `/api/login` response after a successful login.
 
 ### 3. Get logged-in user's profile (Protected)
 
-**GET** `/api/profile`
+**GET** `/api/auth/profile`
 
 **Headers required:**
 ```
@@ -140,6 +140,8 @@ Authorization: Bearer <token>
     "_id": "64f1a2b3c4d5e6f7g8h9i0j1",
     "name": "Alice",
     "email": "alice@example.com",
+    "rating": 0,
+    "completedTrades": 0,
     "createdAt": "2026-07-09T08:37:27.324Z",
     "updatedAt": "2026-07-09T08:37:27.324Z"
   }
@@ -154,39 +156,6 @@ Note: password is never included in this response.
 
 ---
 
-### 4. Upload an image (e.g. item photo)
-
-**POST** `/api/test-upload`
-
-**Body type:** `form-data` (not JSON — this route accepts files)
-
-**Field:**
-- Key: `image`
-- Type: File
-- Choose any image file (jpg, jpeg, png, webp — max 5MB)
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "message": "File uploaded successfully!",
-  "data": {
-    "filename": "image-1699999999999-123456789.jpg",
-    "path": "uploads/image-1699999999999-123456789.jpg",
-    "size": 245678
-  }
-}
-```
-
-**Possible errors (400):**
-- No file uploaded
-- File type not allowed (only jpg, jpeg, png, webp accepted)
-- File larger than 5MB
-
-Note: this is currently a test route. It will be adapted into the real item-creation route once item upload UI is ready on frontend.
-
----
-
 ## Database Models Reference
 
 ### User
@@ -195,6 +164,8 @@ Note: this is currently a test route. It will be adapted into the real item-crea
 | name | String | required |
 | email | String | required, unique |
 | password | String | required, hashed with bcrypt, min 6 characters |
+| rating | Number | defaults to 0 |
+| completedTrades | Number | defaults to 0 |
 | createdAt / updatedAt | Date | auto-generated |
 
 ### Item
@@ -202,10 +173,14 @@ Note: this is currently a test route. It will be adapted into the real item-crea
 |---|---|---|
 | title | String | required |
 | description | String | required |
-| category | String | required |
-| image | String | file path, optional |
+| category | String | required, must be one of: Books, Electronics, Clothing, Furniture, Sports, Accessories, Home Appliances, Others |
+| condition | String | optional, defaults to "Good". One of: New, Like New, Good, Fair, Used, Refurbished |
+| images | [String] | array of file paths, supports multiple images |
 | owner | ObjectId (User) | required |
 | status | String | `available` / `traded` / `pending`, defaults to `available` |
+| location | String | optional |
+| tags | [String] | optional |
+| estimatedValue | Number | optional |
 | createdAt / updatedAt | Date | auto-generated |
 
 ### Trade
@@ -215,21 +190,68 @@ Note: this is currently a test route. It will be adapted into the real item-crea
 | toUser | ObjectId (User) | required |
 | offeredItem | ObjectId (Item) | required |
 | requestedItem | ObjectId (Item) | required |
-| status | String | `pending` / `accepted` / `rejected` / `completed`, defaults to `pending` |
+| status | String | `pending` / `accepted` / `rejected` / `cancelled` / `completed` / `expired`, defaults to `pending` |
 | createdAt / updatedAt | Date | auto-generated |
+
+### Wishlist
+| Field | Type | Notes |
+|---|---|---|
+| user | ObjectId (User) | required, one wishlist per user |
+| items | [ObjectId] (Item) | array of saved items |
+| createdAt / updatedAt | Date | auto-generated |
+
+*(Note: no controller/routes built yet for this model — coming soon)*
+
+### Notification
+| Field | Type | Notes |
+|---|---|---|
+| user | ObjectId (User) | required |
+| type | String | one of: trade_request, trade_accepted, trade_rejected, new_message, item_liked, item_removed |
+| message | String | required |
+| relatedTrade | ObjectId (Trade) | optional |
+| relatedItem | ObjectId (Item) | optional |
+| isRead | Boolean | defaults to false |
+| createdAt / updatedAt | Date | auto-generated |
+
+*(Note: no controller/routes built yet for this model — coming soon)*
+
+### Message
+| Field | Type | Notes |
+|---|---|---|
+| trade | ObjectId (Trade) | required |
+| sender | ObjectId (User) | required |
+| receiver | ObjectId (User) | required |
+| text | String | required |
+| isRead | Boolean | defaults to false |
+| createdAt / updatedAt | Date | auto-generated |
+
+*(Note: no controller/routes built yet for this model — coming soon)*
+
+---
+
+## Image Uploads
+
+Image files are handled via multer and saved to the `uploads/` folder. Only the file path is stored in the database (e.g. `uploads/image-1699999999999-123456789.jpg`) — not the actual image data.
+
+- Allowed formats: jpg, jpeg, png, webp
+- Max file size: 5MB per file
+- Items support multiple images (up to 5)
 
 ---
 
 ## Notes for Frontend Team
 
 - Base URL during development: `http://localhost:5000`
-- All routes are prefixed with `/api`
-- Store the JWT token securely (e.g. in memory or secure storage) after login — send it with every request to protected routes
+- Auth routes are prefixed with `/api/auth`
+- Item routes are prefixed with `/api/items` (see Member 1 for item-specific endpoint documentation, including Smart Match)
+- Store the JWT token securely after login — send it with every request to protected routes
 - If you get a `401` response, the token is missing, invalid, or expired — redirect the user to login again
+- Category and condition fields are strict lists (enums) — sending an unlisted value will be rejected by the database
 
 ---
 
 ## Status
 
 Last updated: July 11, 2026
-Backend by: Member 3 (Database & Authentication)
+Backend models & auth by: Member 3 (Database & Authentication)
+Item/Trade controllers & routes by: Member 1
