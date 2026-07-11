@@ -6,7 +6,8 @@ const Item = require("../models/item");
  */
 const createItem = async (req, res) => {
     try {
-        const { title, description, category, image, owner } = req.body;
+        const { title, description, category, image } = req.body;
+        const owner = req.user ? req.user.id : req.body.owner;
 
         // Check required fields
         if (!title || !description || !category || !owner) {
@@ -45,7 +46,7 @@ const createItem = async (req, res) => {
  */
 const getAllItems = async (req, res) => {
     try {
-        const items = await Item.find();
+        const items = await Item.find().populate("owner", "name email avatar");
 
         res.status(200).json({
             success: true,
@@ -68,7 +69,7 @@ const getAllItems = async (req, res) => {
  */
 const getItemById = async (req, res) => {
     try {
-        const item = await Item.findById(req.params.id);
+        const item = await Item.findById(req.params.id).populate("owner", "name email avatar");
 
         if (!item) {
             return res.status(404).json({

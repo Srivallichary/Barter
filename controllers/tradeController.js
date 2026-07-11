@@ -1,5 +1,6 @@
 const Trade = require("../models/trade");
 const Item = require("../models/item");
+const User = require("../models/user");
 
 /**
  * @desc    Create a trade request
@@ -20,6 +21,13 @@ const createTrade = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: "Please provide all required fields"
+            });
+        }
+
+        if (offeredItem === requestedItem) {
+            return res.status(400).json({
+                success: false,
+                message: "You cannot trade an item with itself"
             });
         }
 
@@ -59,13 +67,6 @@ const createTrade = async (req, res) => {
             trade
         });
 
-        if (offeredItem === requestedItem) {
-    return res.status(400).json({
-        success: false,
-        message: "You cannot trade an item with itself"
-    });
-}
-
     } catch (error) {
         res.status(500).json({
             success: false,
@@ -82,16 +83,25 @@ const createTrade = async (req, res) => {
  */
 const getUserTrades = async (req, res) => {
     try {
+        const userId = req.params.userId || (req.user ? req.user.id : null);
+        
+        if (!userId) {
+            return res.status(400).json({
+                success: false,
+                message: "User ID is required"
+            });
+        }
+
         const trades = await Trade.find({
             $or: [
-                { fromUser: req.params.userId },
-                { toUser: req.params.userId }
+                { fromUser: userId },
+                { toUser: userId }
             ]
         })
-        .populate("fromUser", "name email")
-        .populate("toUser", "name email")
-        .populate("offeredItem", "title category status")
-        .populate("requestedItem", "title category status");
+        .populate("fromUser", "name email avatar")
+        .populate("toUser", "name email avatar")
+        .populate("offeredItem", "title category status image")
+        .populate("requestedItem", "title category status image");
 
         res.status(200).json({
             success: true,
@@ -114,6 +124,8 @@ const getUserTrades = async (req, res) => {
  */
 const acceptTrade = async (req, res) => {
     try {
+        const { meetupLocation, meetupTime } = req.body;
+
         // Find trade
         const trade = await Trade.findById(req.params.id);
 
@@ -132,8 +144,10 @@ const acceptTrade = async (req, res) => {
             });
         }
 
-        // Update trade status
+        // Update trade status and meetup details
         trade.status = "accepted";
+        if (meetupLocation) trade.meetupLocation = meetupLocation;
+        if (meetupTime) trade.meetupTime = meetupTime;
 
         await trade.save();
 
@@ -247,10 +261,60 @@ const completeTrade = async (req, res) => {
     }
 };
 
+/**
+ * @desc    Add a message to a trade request
+ * @route   POST /api/trades/:id/message
+ * @access  Private
+ */
+const addTradeMessage = async (req, res) => {
+    try {
+        const { text } = req.body;
+        if (!text) {
+            return res.status(400).json({
+                success: false,
+                message: "Message text is required"
+            });
+        }
+
+        const trade = await Trade.findById(req.params.id);
+        if (!trade) {
+            return res.status(404).json({
+                success: false,
+                message: "Trade request not found"
+            });
+        }
+
+        // Get sender profile details
+        const senderUser = await User.findById(req.user.id);
+        const senderName = senderUser ? senderUser.name : "Member";
+
+        // Add message
+        trade.messages.push({
+            sender: req.user.id,
+            senderName,
+            text
+        });
+
+        await trade.save();
+
+        res.status(200).json({
+            success: true,
+            messages: trade.messages
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
 module.exports = {
     createTrade,
     getUserTrades,
     acceptTrade,
     rejectTrade,
-    completeTrade
+    completeTrade,
+    addTradeMessage
 };
