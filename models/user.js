@@ -29,6 +29,18 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    verificationCode: {
+      type: String,
+      default: null,
+    },
+    verificationCodeExpires: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true, // auto adds createdAt & updatedAt
