@@ -1,4 +1,5 @@
 const express = require("express");
+const upload = require("../middleware/upload");
 
 const router = express.Router();
 
@@ -12,7 +13,7 @@ const {
 } = require("../controllers/itemController");
 
 // Create Item
-router.post("/", createItem);
+router.post("/", upload.single("image"), createItem);
 
 // Get All Items
 router.get("/", getAllItems);

@@ -6,7 +6,8 @@ const Item = require("../models/item");
  */
 const createItem = async (req, res) => {
     try {
-        const { title, description, category, image, owner } = req.body;
+        const { title, description, category, owner } = req.body;
+        const image = req.file ? req.file.filename : req.body.image;
 
         // Check required fields
         if (!title || !description || !category || !owner) {
