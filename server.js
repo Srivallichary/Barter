@@ -119,3 +119,26 @@ mongoose
   .catch((error) => {
     console.error('❌ MongoDB connection failed:', error.message);
   });
+  
+  
+// TEST ROUTE — for testing image upload with multer
+const upload = require('./middleware/upload');
+
+app.post('/api/test-upload', upload.single('image'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({
+      success: false,
+      message: 'No file uploaded',
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'File uploaded successfully!',
+    data: {
+      filename: req.file.filename,
+      path: req.file.path,
+      size: req.file.size,
+    },
+  });
+});                                                                                                                                                    
