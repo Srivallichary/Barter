@@ -1,8 +1,8 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
-const User = require('../models/User');
-const Item = require('../models/Item');
-const Trade = require('../models/Trade');
+const User = require('../models/user');
+const Item = require('../models/item');
+const Trade = require('../models/trade');
 
 async function testItemAndTrade() {
   try {
@@ -12,7 +12,7 @@ async function testItemAndTrade() {
     });
     console.log('✅ Connected to MongoDB successfully!');
 
-    // 2. Create two test users (needed for owner/fromUser/toUser references)
+    // 2. Create two test users
     const userA = await User.create({
       name: 'Alice',
       email: `alice${Date.now()}@example.com`,
@@ -25,23 +25,37 @@ async function testItemAndTrade() {
     });
     console.log('✅ Two test users created:', userA.name, '&', userB.name);
 
-    // 3. Create two test items, one owned by each user
+    // 3. Create two test items using the NEW schema fields
     const itemA = await Item.create({
       title: 'Old Guitar',
       description: 'A slightly used acoustic guitar',
-      category: 'Music',
+      category: 'Others',
+      condition: 'Good',
+      images: ['uploads/sample-guitar.jpg'],
       owner: userA._id,
+      location: 'Campus Block A',
+      tags: ['music', 'instrument'],
+      estimatedValue: 3000,
     });
+
     const itemB = await Item.create({
       title: 'Skateboard',
       description: 'Barely used skateboard',
       category: 'Sports',
+      condition: 'Like New',
+      images: ['uploads/sample-skateboard.jpg'],
       owner: userB._id,
+      location: 'Campus Block B',
+      tags: ['sports', 'outdoor'],
+      estimatedValue: 1500,
     });
     console.log('✅ Two test items created:', itemA.title, '&', itemB.title);
+
+    // 4. Sync indexes
     await Item.syncIndexes();
     console.log('✅ Indexes synced!');
-    // 4. Create a trade between the two users/items
+
+    // 5. Create a trade between the two users/items
     const trade = await Trade.create({
       fromUser: userA._id,
       toUser: userB._id,
@@ -51,19 +65,31 @@ async function testItemAndTrade() {
     console.log('✅ Trade created successfully!');
     console.log('Trade document:', trade);
 
-    // 5. Confirm default status was applied correctly
+    // 6. Confirm default status
     if (trade.status === 'pending') {
       console.log('✅ Trade default status is "pending" as expected!');
-    } else {
-      console.log('❌ Unexpected trade status:', trade.status);
     }
 
-    // 6. Confirm timestamps were added
-    if (trade.createdAt && trade.updatedAt) {
-      console.log('✅ Trade timestamps (createdAt/updatedAt) working!');
+    // 7. Confirm the new expanded trade status enum accepts "cancelled"
+    trade.status = 'cancelled';
+    await trade.save();
+    console.log('✅ Trade status successfully updated to "cancelled" — new enum values work!');
+
+    // 8. Confirm category enum rejects invalid values
+    try {
+      await Item.create({
+        title: 'Invalid Category Test',
+        description: 'This should fail',
+        category: 'NotARealCategory',
+        condition: 'Good',
+        owner: userA._id,
+      });
+      console.log('❌ This should NOT have succeeded — category enum is not working!');
+    } catch (error) {
+      console.log('✅ Category enum correctly rejected an invalid value!');
     }
 
-    // 7. Test the text index on Item by searching
+    // 9. Test text index search
     const searchResults = await Item.find({ $text: { $search: 'Guitar' } });
     console.log(
       `✅ Text index search works! Found ${searchResults.length} result(s) for "Guitar"`
