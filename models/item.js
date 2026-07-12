@@ -24,6 +24,11 @@ const itemSchema = new mongoose.Schema(
         'Accessories',
         'Home Appliances',
         'Others',
+        'Textbooks',
+        'Dorm Decor',
+        'Clothing & Gear',
+        'Games & Hobbies',
+        'Bicycles & Sports'
       ],
     },
     condition: {
@@ -34,6 +39,10 @@ const itemSchema = new mongoose.Schema(
     images: {
       type: [String], // array of file paths/URLs, supports multiple images
       default: [],
+    },
+    image: {
+      type: String,
+      default: '',
     },
     owner: {
       type: mongoose.Schema.Types.ObjectId,

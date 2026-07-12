@@ -29,6 +29,26 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    avatar: {
+      type: String,
+      default: '',
+    },
+    phone: {
+      type: String,
+      default: '',
+    },
+    department: {
+      type: String,
+      default: '',
+    },
+    bio: {
+      type: String,
+      default: '',
+    },
+    role: {
+      type: String,
+      default: 'User',
+    },
   },
   {
     timestamps: true, // auto adds createdAt & updatedAt

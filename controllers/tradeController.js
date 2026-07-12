@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Trade = require("../models/trade");
 const Item = require("../models/item");
+const User = require("../models/user");
 
 const getRequesterId = (req) => req.user?.userId || req.user?.id || req.user?._id;
 
@@ -20,11 +21,7 @@ const createTrade = async (req, res) => {
             });
         }
 
-        const {
-            toUser,
-            offeredItem,
-            requestedItem
-        } = req.body;
+        const { toUser, offeredItem, requestedItem } = req.body;
 
         if (!toUser || !offeredItem || !requestedItem) {
             return res.status(400).json({
@@ -84,7 +81,6 @@ const createTrade = async (req, res) => {
             message: "Trade request created successfully",
             data: { trade }
         });
-
     } catch (error) {
         return res.status(500).json({
             success: false,
@@ -92,7 +88,6 @@ const createTrade = async (req, res) => {
         });
     }
 };
-
 
 /**
  * @desc    Get all trades for a user
@@ -118,10 +113,10 @@ const getUserTrades = async (req, res) => {
                 { toUser: userId }
             ]
         })
-        .populate("fromUser", "name email")
-        .populate("toUser", "name email")
-        .populate("offeredItem", "title category status images owner")
-        .populate("requestedItem", "title category status images owner");
+            .populate("fromUser", "name email avatar")
+            .populate("toUser", "name email avatar")
+            .populate("offeredItem", "title category status images image owner")
+            .populate("requestedItem", "title category status images image owner");
 
         return res.status(200).json({
             success: true,
@@ -131,7 +126,6 @@ const getUserTrades = async (req, res) => {
                 count: trades.length
             }
         });
-
     } catch (error) {
         return res.status(500).json({
             success: false,
@@ -156,6 +150,7 @@ const acceptTrade = async (req, res) => {
             });
         }
 
+        const { meetupLocation, meetupTime } = req.body;
         const trade = await Trade.findById(req.params.id);
 
         if (!trade) {
@@ -180,6 +175,9 @@ const acceptTrade = async (req, res) => {
         }
 
         trade.status = "accepted";
+        if (meetupLocation) trade.meetupLocation = meetupLocation;
+        if (meetupTime) trade.meetupTime = meetupTime;
+
         await trade.save();
 
         return res.status(200).json({
@@ -187,7 +185,6 @@ const acceptTrade = async (req, res) => {
             message: "Trade accepted successfully",
             data: { trade }
         });
-
     } catch (error) {
         return res.status(500).json({
             success: false,
@@ -243,7 +240,6 @@ const rejectTrade = async (req, res) => {
             message: "Trade rejected successfully",
             data: { trade }
         });
-
     } catch (error) {
         return res.status(500).json({
             success: false,
@@ -294,24 +290,65 @@ const completeTrade = async (req, res) => {
         trade.status = "completed";
         await trade.save();
 
-        await Item.findByIdAndUpdate(trade.offeredItem, {
-            status: "traded"
-        });
-
-        await Item.findByIdAndUpdate(trade.requestedItem, {
-            status: "traded"
-        });
+        await Item.findByIdAndUpdate(trade.offeredItem, { status: "traded" });
+        await Item.findByIdAndUpdate(trade.requestedItem, { status: "traded" });
 
         return res.status(200).json({
             success: true,
             message: "Trade completed successfully",
             data: { trade }
         });
-
     } catch (error) {
         return res.status(500).json({
             success: false,
             message: error.message || "Failed to complete trade"
+        });
+    }
+};
+
+/**
+ * @desc    Add a message to a trade request
+ * @route   POST /api/trades/:id/message
+ * @access  Private
+ */
+const addTradeMessage = async (req, res) => {
+    try {
+        const { text } = req.body;
+        if (!text) {
+            return res.status(400).json({
+                success: false,
+                message: "Message text is required"
+            });
+        }
+
+        const senderId = getRequesterId(req);
+        const trade = await Trade.findById(req.params.id);
+        if (!trade) {
+            return res.status(404).json({
+                success: false,
+                message: "Trade request not found"
+            });
+        }
+
+        const senderUser = await User.findById(senderId);
+        const senderName = senderUser ? senderUser.name : "Member";
+
+        trade.messages.push({
+            sender: senderId,
+            senderName,
+            text
+        });
+
+        await trade.save();
+
+        return res.status(200).json({
+            success: true,
+            data: { messages: trade.messages }
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message
         });
     }
 };
@@ -321,5 +358,6 @@ module.exports = {
     getUserTrades,
     acceptTrade,
     rejectTrade,
-    completeTrade
+    completeTrade,
+    addTradeMessage
 };

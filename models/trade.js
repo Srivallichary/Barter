@@ -27,6 +27,35 @@ const tradeSchema = new mongoose.Schema(
       enum: ['pending', 'accepted', 'rejected', 'cancelled', 'completed', 'expired'],
       default: 'pending',
     },
+    meetupLocation: {
+      type: String,
+      default: '',
+    },
+    meetupTime: {
+      type: String,
+      default: '',
+    },
+    messages: [
+      {
+        sender: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+          required: true,
+        },
+        senderName: {
+          type: String,
+          required: true,
+        },
+        text: {
+          type: String,
+          required: true,
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+      }
+    ],
   },
   {
     timestamps: true,

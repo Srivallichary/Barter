@@ -10,7 +10,7 @@ const getRequesterId = (req) => req.user?.userId || req.user?.id || req.user?._i
  */
 const createItem = async (req, res) => {
     try {
-        const { title, description, category, condition, location, tags, estimatedValue, status } = req.body;
+        const { title, description, category, condition, location, tags, estimatedValue, status, image } = req.body;
         const owner = req.body.owner || getRequesterId(req);
         const images = req.files
             ? req.files.map((file) => file.filename)
@@ -35,6 +35,7 @@ const createItem = async (req, res) => {
             category,
             condition,
             images,
+            image: image || images[0] || "",
             owner,
             location,
             tags,
@@ -47,7 +48,6 @@ const createItem = async (req, res) => {
             message: "Item created successfully",
             data: { item }
         });
-
     } catch (error) {
         return res.status(500).json({
             success: false,
@@ -92,7 +92,7 @@ const getAllItems = async (req, res) => {
             sortOption = { title: 1 };
         }
 
-        const items = await Item.find(query).sort(sortOption).populate("owner", "name email");
+        const items = await Item.find(query).sort(sortOption).populate("owner", "name email avatar");
 
         return res.status(200).json({
             success: true,
@@ -102,7 +102,6 @@ const getAllItems = async (req, res) => {
                 count: items.length
             }
         });
-
     } catch (error) {
         return res.status(500).json({
             success: false,
@@ -125,7 +124,7 @@ const getItemById = async (req, res) => {
             });
         }
 
-        const item = await Item.findById(req.params.id).populate("owner", "name email");
+        const item = await Item.findById(req.params.id).populate("owner", "name email avatar");
 
         if (!item) {
             return res.status(404).json({
@@ -139,7 +138,6 @@ const getItemById = async (req, res) => {
             message: "Item retrieved successfully",
             data: { item }
         });
-
     } catch (error) {
         return res.status(500).json({
             success: false,
@@ -193,8 +191,10 @@ const updateItem = async (req, res) => {
 
         if (req.file) {
             updateData.images = [req.file.filename];
+            updateData.image = req.file.filename;
         } else if (req.files) {
             updateData.images = req.files.map((file) => file.filename);
+            updateData.image = req.files[0]?.filename || "";
         }
 
         const updatedItem = await Item.findByIdAndUpdate(
@@ -211,7 +211,6 @@ const updateItem = async (req, res) => {
             message: "Item updated successfully",
             data: { item: updatedItem }
         });
-
     } catch (error) {
         return res.status(500).json({
             success: false,
@@ -265,7 +264,6 @@ const deleteItem = async (req, res) => {
             success: true,
             message: "Item deleted successfully"
         });
-
     } catch (error) {
         return res.status(500).json({
             success: false,
@@ -302,7 +300,7 @@ const getSmartMatches = async (req, res) => {
             category: currentItem.category,
             status: "available",
             owner: { $ne: currentItem.owner }
-        }).populate("owner", "name email");
+        }).populate("owner", "name email avatar");
 
         return res.status(200).json({
             success: true,
@@ -312,7 +310,6 @@ const getSmartMatches = async (req, res) => {
                 count: matches.length
             }
         });
-
     } catch (error) {
         return res.status(500).json({
             success: false,
