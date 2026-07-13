@@ -41,7 +41,7 @@ const Input = React.forwardRef(
             className={`
               block w-full rounded-2xl border bg-white/45 backdrop-blur-sm py-3.5 text-sm sm:text-base text-slate-900 transition-all duration-300
               placeholder:text-slate-400
-              focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 focus:outline-none
+              focus:bg-white focus:border-[#51D95F] focus:ring-4 focus:ring-[#51D95F]/10 focus:outline-none
               disabled:bg-slate-100/50 disabled:text-slate-500 disabled:border-slate-200
               ${Icon ? "pl-12" : "pl-5"}
               ${EndIcon ? "pr-12" : "pr-5"}

@@ -33,7 +33,7 @@ function AuthHeader({ title, subtitle, showLogo = false, backTo, onBackClick }) 
       <div className="space-y-2">
         {showLogo && (
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 rounded-xl bg-indigo-650 flex items-center justify-center text-white font-extrabold text-sm shadow-md">
+            <div className="w-8 h-8 rounded-xl bg-[#51D95F] flex items-center justify-center text-white font-extrabold text-sm shadow-md">
               B
             </div>
             <span className="text-sm font-black tracking-wider uppercase text-slate-900">Barter</span>

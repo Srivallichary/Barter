@@ -2,8 +2,29 @@ const mongoose = require("mongoose");
 const Trade = require("../models/trade");
 const Item = require("../models/item");
 const User = require("../models/user");
+const Review = require("../models/review");
 
 const getRequesterId = (req) => req.user?.userId || req.user?.id || req.user?._id;
+
+const syncUserRating = async (userId) => {
+    if (!userId) return;
+
+    const user = await User.findById(userId);
+    if (!user) return;
+
+    const reviews = await Review.find({ reviewee: userId });
+    const reviewCount = reviews.length;
+    const averageRating = reviewCount > 0
+        ? Number((reviews.reduce((sum, review) => sum + review.score, 0) / reviewCount).toFixed(1))
+        : Number(user.rating || 0);
+
+    await User.findByIdAndUpdate(userId, {
+        $set: {
+            rating: averageRating,
+            reviewCount,
+        }
+    });
+};
 
 /**
  * @desc    Create a trade request
@@ -293,6 +314,11 @@ const completeTrade = async (req, res) => {
         await Item.findByIdAndUpdate(trade.offeredItem, { status: "traded" });
         await Item.findByIdAndUpdate(trade.requestedItem, { status: "traded" });
 
+        await User.findByIdAndUpdate(trade.fromUser, { $inc: { completedTrades: 1 } });
+        await User.findByIdAndUpdate(trade.toUser, { $inc: { completedTrades: 1 } });
+        await syncUserRating(trade.fromUser);
+        await syncUserRating(trade.toUser);
+
         return res.status(200).json({
             success: true,
             message: "Trade completed successfully",
@@ -330,16 +356,32 @@ const addTradeMessage = async (req, res) => {
             });
         }
 
+        if (String(trade.fromUser) !== String(senderId) && String(trade.toUser) !== String(senderId)) {
+            return res.status(403).json({
+                success: false,
+                message: "You are not a participant in this trade"
+            });
+        }
+
         const senderUser = await User.findById(senderId);
         const senderName = senderUser ? senderUser.name : "Member";
-
-        trade.messages.push({
+        const messagePayload = {
             sender: senderId,
             senderName,
-            text
-        });
+            text,
+            createdAt: new Date()
+        };
 
+        trade.messages.push(messagePayload);
         await trade.save();
+
+        const io = req.app.get("io");
+        if (io) {
+            io.to(`trade:${trade._id}`).emit("trade-message", {
+                tradeId: trade._id.toString(),
+                message: messagePayload
+            });
+        }
 
         return res.status(200).json({
             success: true,
@@ -353,11 +395,84 @@ const addTradeMessage = async (req, res) => {
     }
 };
 
+const reviewTrade = async (req, res) => {
+    try {
+        const requesterId = getRequesterId(req);
+        if (!requesterId) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication required"
+            });
+        }
+
+        const trade = await Trade.findById(req.params.id);
+        if (!trade) {
+            return res.status(404).json({
+                success: false,
+                message: "Trade not found"
+            });
+        }
+
+        if (String(trade.fromUser) !== String(requesterId) && String(trade.toUser) !== String(requesterId)) {
+            return res.status(403).json({
+                success: false,
+                message: "You are not a participant in this trade"
+            });
+        }
+
+        if (trade.status !== "completed") {
+            return res.status(400).json({
+                success: false,
+                message: "Only completed trades can be reviewed"
+            });
+        }
+
+        const { score, comment = "" } = req.body;
+        if (!Number.isInteger(score) || score < 1 || score > 5) {
+            return res.status(400).json({
+                success: false,
+                message: "Please provide a rating between 1 and 5"
+            });
+        }
+
+        const existingReview = await Review.findOne({ trade: trade._id, reviewer: requesterId });
+        if (existingReview) {
+            return res.status(409).json({
+                success: false,
+                message: "You have already reviewed this trade"
+            });
+        }
+
+        const revieweeId = String(trade.fromUser) === String(requesterId) ? trade.toUser : trade.fromUser;
+        const review = await Review.create({
+            trade: trade._id,
+            reviewer: requesterId,
+            reviewee: revieweeId,
+            score,
+            comment
+        });
+
+        await syncUserRating(revieweeId);
+
+        return res.status(201).json({
+            success: true,
+            message: "Review submitted successfully",
+            data: { review }
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to submit review"
+        });
+    }
+};
+
 module.exports = {
     createTrade,
     getUserTrades,
     acceptTrade,
     rejectTrade,
     completeTrade,
-    addTradeMessage
+    addTradeMessage,
+    reviewTrade
 };

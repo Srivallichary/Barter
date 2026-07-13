@@ -12,7 +12,7 @@ function Footer() {
           {/* Logo / Description */}
           <div className="md:col-span-1 space-y-4">
             <Link to="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-indigo-650 flex items-center justify-center text-white font-bold text-base shadow-sm">
+              <div className="w-8 h-8 rounded-lg bg-[#51D95F] flex items-center justify-center text-white font-bold text-base shadow-sm">
                 B
               </div>
               <span className="text-base font-extrabold text-slate-900 tracking-wider uppercase">
@@ -23,13 +23,13 @@ function Footer() {
               Exchanging goods locally with your neighbors and community. No money, no hassle, just sustainable sharing.
             </p>
             <div className="flex gap-4">
-              <a href="#" className="text-slate-400 hover:text-indigo-650 transition-colors" aria-label="Web">
+              <a href="#" className="text-slate-400 hover:text-[#51D95F] transition-colors" aria-label="Web">
                 <Globe size={16} />
               </a>
-              <a href="#" className="text-slate-400 hover:text-indigo-650 transition-colors" aria-label="Share">
+              <a href="#" className="text-slate-400 hover:text-[#51D95F] transition-colors" aria-label="Share">
                 <Share2 size={16} />
               </a>
-              <a href="#" className="text-slate-400 hover:text-indigo-650 transition-colors" aria-label="Chat">
+              <a href="#" className="text-slate-400 hover:text-[#51D95F] transition-colors" aria-label="Chat">
                 <MessageSquare size={16} />
               </a>
             </div>
@@ -42,17 +42,17 @@ function Footer() {
             </h3>
             <ul className="space-y-2.5">
               <li>
-                <Link to="/" className="text-xs font-medium text-slate-600 hover:text-indigo-650 transition-colors">
+                <Link to="/" className="text-xs font-medium text-slate-600 hover:text-[#51D95F] transition-colors">
                   Explore Items
                 </Link>
               </li>
               <li>
-                <Link to="/my-items" className="text-xs font-medium text-slate-600 hover:text-indigo-650 transition-colors">
+                <Link to="/my-items" className="text-xs font-medium text-slate-600 hover:text-[#51D95F] transition-colors">
                   My Listings
                 </Link>
               </li>
               <li>
-                <Link to="/trades" className="text-xs font-medium text-slate-600 hover:text-indigo-650 transition-colors">
+                <Link to="/trades" className="text-xs font-medium text-slate-600 hover:text-[#51D95F] transition-colors">
                   Trade Board
                 </Link>
               </li>
@@ -66,17 +66,17 @@ function Footer() {
             </h3>
             <ul className="space-y-2.5">
               <li>
-                <a href="#" className="text-xs font-medium text-slate-600 hover:text-indigo-650 transition-colors">
+                <a href="#" className="text-xs font-medium text-slate-600 hover:text-[#51D95F] transition-colors">
                   How It Works
                 </a>
               </li>
               <li>
-                <a href="#" className="text-xs font-medium text-slate-600 hover:text-indigo-650 transition-colors">
+                <a href="#" className="text-xs font-medium text-slate-600 hover:text-[#51D95F] transition-colors">
                   Guidelines
                 </a>
               </li>
               <li>
-                <a href="#" className="text-xs font-medium text-slate-600 hover:text-indigo-650 transition-colors">
+                <a href="#" className="text-xs font-medium text-slate-600 hover:text-[#51D95F] transition-colors">
                   Safety Tips
                 </a>
               </li>

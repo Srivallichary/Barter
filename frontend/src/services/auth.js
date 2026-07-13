@@ -10,6 +10,26 @@ export const authService = {
   // ──────────────────────────────────────────────
   registerUser: async (username, password, email) => {
     const res = await api.post("/auth/register", { name: username, password, email });
+    if (res?.data?.token) {
+      setToken(res.data.token);
+    }
+    return res.data;
+  },
+
+  uploadIdCard: async (formData) => {
+    const res = await api.post("/users/upload-id-card", formData, {
+      headers: formData.getHeaders ? formData.getHeaders() : undefined,
+    });
+    return res.data;
+  },
+
+  getPendingVerifications: async () => {
+    const res = await api.get("/users/verification/pending");
+    return res.data?.data || res.data;
+  },
+
+  reviewVerification: async (userId, action) => {
+    const res = await api.post(`/users/verification/${userId}`, { action });
     return res.data;
   },
 
@@ -37,24 +57,6 @@ export const authService = {
     return { success: true, message: "Logged out successfully" };
   },
 
-  // ──────────────────────────────────────────────
-  // REAL API: POST /api/auth/send-otp
-  // ──────────────────────────────────────────────
-  sendOtp: async (email) => {
-    const res = await api.post("/auth/send-otp", { email });
-    return res.data;
-  },
-
-  // ──────────────────────────────────────────────
-  // REAL API: POST /api/auth/verify-otp
-  // ──────────────────────────────────────────────
-  verifyOtp: async (email, otp) => {
-    const res = await api.post("/auth/verify-otp", { email, otp });
-    return res.data;
-  },
-
-  // ──────────────────────────────────────────────
-  // REAL API: GET /api/auth/check-username/:username
   // ──────────────────────────────────────────────
   checkUsernameAvailability: async (username) => {
     const res = await api.get(`/auth/check-username/${username}`);

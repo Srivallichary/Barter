@@ -223,15 +223,7 @@ function ForgotPasswordPage() {
                     {errors.otp && (
                       <p className="text-xs text-red-650 font-bold text-center mt-2">{errors.otp}</p>
                     )}
-                     
-                     {/* Mock OTP Helper Badge (Development Mode) */}
-                     <div className="mt-4 bg-slate-50 border border-slate-200/60 p-3 rounded-2xl text-center shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
-                       <span className="text-[9px] text-indigo-650 font-black uppercase tracking-widest block mb-0.5">Development Mode</span>
-                       <p className="text-xs text-slate-500 font-semibold leading-none">
-                         Mock OTP: <strong className="text-slate-800 font-black">123456</strong>
-                       </p>
-                     </div>
-                   </div>
+                  </div>
 
                   {/* Resend OTP counting */}
                   <CountdownTimer

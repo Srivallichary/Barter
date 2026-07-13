@@ -9,7 +9,7 @@ const otpSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
-    otp: {
+    hashedOtp: {
       type: String,
       required: true,
     },
@@ -17,12 +17,25 @@ const otpSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    attempts: {
+      type: Number,
+      default: 0,
+    },
+    maxAttempts: {
+      type: Number,
+      default: 5,
+    },
+    expiresAt: {
+      type: Date,
+      required: true,
+      index: { expireAfterSeconds: 0 },
+    },
     createdAt: {
       type: Date,
       default: Date.now,
-      expires: 300, // 5 minutes TTL index
     },
-  }
+  },
+  { timestamps: true }
 );
 
 const Otp = mongoose.model('Otp', otpSchema);

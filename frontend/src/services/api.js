@@ -22,8 +22,16 @@ export function removeToken() {
 // Centralized Axios Instance
 // ============================================================
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+if (!import.meta.env.VITE_API_URL) {
+  console.warn(
+    "VITE_API_URL is not defined. Falling back to http://localhost:5000/api."
+  );
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },

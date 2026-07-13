@@ -25,6 +25,7 @@ function Navbar() {
           { to: "/my-items", label: "My Listings" },
           { to: "/trades", label: "Swap Board" },
           { to: "/profile", label: "Profile" },
+          ...(user.role?.toLowerCase() === "admin" ? [{ to: "/admin/verification", label: "Admin Review" }] : []),
         ]
       : []),
   ];
@@ -32,7 +33,7 @@ function Navbar() {
   const getLinkClass = ({ isActive }) =>
     `relative py-2 text-xs sm:text-sm font-bold uppercase tracking-widest transition-colors duration-250 cursor-pointer ${
       isActive
-        ? "text-indigo-600 font-extrabold"
+        ? "text-[#51D95F] font-extrabold"
         : "text-slate-550 hover:text-slate-900"
     }`;
 
@@ -44,10 +45,10 @@ function Navbar() {
           {/* Logo */}
           <div className="flex items-center">
             <Link to="/" className="flex items-center gap-2 group">
-              <div className="w-8 h-8 rounded-xl bg-indigo-650 flex items-center justify-center text-white font-bold text-base shadow-sm group-hover:scale-105 transition-all duration-200">
+              <div className="w-8 h-8 rounded-xl bg-[#51D95F] flex items-center justify-center text-white font-bold text-base shadow-sm group-hover:scale-105 transition-all duration-200">
                 B
               </div>
-              <span className="text-base font-black text-slate-900 tracking-wider group-hover:text-indigo-650 transition-colors uppercase">
+              <span className="text-base font-black text-slate-900 tracking-wider group-hover:text-[#51D95F] transition-colors uppercase">
                 Barter
               </span>
             </Link>
@@ -60,7 +61,7 @@ function Navbar() {
                     <>
                       {link.label}
                       {isActive && (
-                        <span className="absolute bottom-[-22px] left-0 right-0 h-0.5 bg-indigo-650 rounded-full" />
+                        <span className="absolute bottom-[-22px] left-0 right-0 h-0.5 bg-[#51D95F] rounded-full" />
                       )}
                     </>
                   )}
@@ -86,7 +87,7 @@ function Navbar() {
                 <Button to="/login" variant="ghost" size="sm" className="text-xs sm:text-sm">
                   Log in
                 </Button>
-                <Button to="/signup" variant="primary" size="sm" className="text-xs sm:text-sm bg-indigo-600">
+                <Button to="/signup" variant="primary" size="sm" className="text-xs sm:text-sm bg-[#51D95F] hover:bg-[#3fc94c]">
                   Sign up
                 </Button>
               </div>
@@ -117,7 +118,7 @@ function Navbar() {
                 className={({ isActive }) =>
                   `block px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-widest ${
                     isActive
-                      ? "bg-indigo-50/50 text-indigo-700"
+                      ? "bg-[#f1fdf2] text-[#2fa53e]"
                       : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                   }`
                 }

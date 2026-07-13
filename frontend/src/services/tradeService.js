@@ -37,13 +37,15 @@ export const tradeService = {
           year: "numeric"
         }),
         senderItem: t.offeredItem?.title || "Offered Item",
-        senderItemImage: t.offeredItem?.image || "",
+        senderItemImage: t.offeredItem?.images?.[0] || t.offeredItem?.image || "",
         receiverItem: t.requestedItem?.title || "Requested Item",
-        receiverItemImage: t.requestedItem?.image || "",
+        receiverItemImage: t.requestedItem?.images?.[0] || t.requestedItem?.image || "",
         message: t.message || "",
         meetupLocation: t.meetupLocation || "",
         meetupTime: t.meetupTime || "",
-        messages: t.messages || []
+        messages: t.messages || [],
+        reviewSubmitted: false,
+        statusCode: t.status || "pending"
       };
     });
   },
@@ -91,6 +93,15 @@ export const tradeService = {
   sendTradeMessage: async (id, text) => {
     const res = await api.post(`/trades/${id}/message`, { text });
     return res.data.messages || [];
+  },
+
+  // ──────────────────────────────────────────────
+  // REAL API: POST /api/trades/:id/review
+  // Submits a review for a completed trade
+  // ──────────────────────────────────────────────
+  reviewTrade: async (id, score, comment = "") => {
+    const res = await api.post(`/trades/${id}/review`, { score, comment });
+    return res.data.review || res.data;
   },
 
   // ──────────────────────────────────────────────

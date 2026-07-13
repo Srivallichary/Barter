@@ -9,7 +9,7 @@ function AuthLayout({ children }) {
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:20px_30px] opacity-40 pointer-events-none" />
         
         <div className="relative z-10 flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-indigo-650 flex items-center justify-center text-white font-extrabold text-sm shadow-md">
+          <div className="w-8 h-8 rounded-xl bg-[#51D95F] flex items-center justify-center text-white font-extrabold text-sm shadow-md">
             B
           </div>
           <span className="text-sm font-black tracking-wider uppercase">Barter</span>
@@ -26,11 +26,11 @@ function AuthLayout({ children }) {
 
         <div className="relative z-10 pt-8 border-t border-slate-800 flex gap-10 text-xs">
           <div className="flex items-center gap-2">
-            <Recycle size={16} className="text-indigo-400" />
+            <Recycle size={16} className="text-[#51D95F]" />
             <span className="font-semibold text-slate-300">100% Cashless Swapping</span>
           </div>
           <div className="flex items-center gap-2">
-            <Compass size={16} className="text-indigo-400" />
+            <Compass size={16} className="text-[#51D95F]" />
             <span className="font-semibold text-slate-300">Local Neighborhood Audits</span>
           </div>
         </div>

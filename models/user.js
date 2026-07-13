@@ -29,6 +29,10 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    reviewCount: {
+      type: Number,
+      default: 0,
+    },
     avatar: {
       type: String,
       default: '',
@@ -48,6 +52,21 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       default: 'User',
+    },
+    verificationStatus: {
+      type: String,
+      enum: ['unverified', 'pending', 'verified'],
+      default: 'unverified',
+    },
+    idCardImage: {
+      type: String,
+      default: '',
+    },
+    verificationSubmittedAt: {
+      type: Date,
+    },
+    verificationReviewedAt: {
+      type: Date,
     },
   },
   {

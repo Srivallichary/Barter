@@ -1,7 +1,8 @@
-import React, { useState, useContext, useEffect } from "react";
+import React, { useState, useContext, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeftRight, Check, X, Calendar, MapPin, MessageSquare, RefreshCw, AlertCircle, Inbox, HelpCircle } from "lucide-react";
+import { ArrowLeftRight, Check, X, Calendar, MapPin, MessageSquare, AlertCircle, Inbox, HelpCircle, Star } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
+import { io } from "socket.io-client";
 import { AuthContext } from "../context/AuthContext";
 import Layout from "../components/common/Layout";
 import Card from "../components/common/Card";
@@ -14,7 +15,7 @@ import { tradeService } from "../services/tradeService";
 // Premium Skeleton Trade Card component
 function SkeletonTradeCard() {
   return (
-    <div className="border border-slate-200/50 rounded-3xl p-6 bg-white/60 backdrop-blur-sm space-y-5 animate-pulse min-h-[220px]">
+    <div className="border border-slate-200/50 rounded-3xl p-6 bg-white/60 backdrop-blur-sm space-y-5 animate-pulse min-h-55">
       <div className="flex justify-between items-center pb-4 border-b border-slate-100">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-full bg-slate-200" />
@@ -49,6 +50,9 @@ function TradesPage() {
   const [activeChatTradeId, setActiveChatTradeId] = useState(null);
   const [typedMessage, setTypedMessage] = useState("");
   const [messageSending, setMessageSending] = useState(false);
+  const [submittingReviewId, setSubmittingReviewId] = useState(null);
+  const [reviewDrafts, setReviewDrafts] = useState({});
+  const socketRef = useRef(null);
 
   const fetchTradesList = async () => {
     setLoading(true);
@@ -70,21 +74,35 @@ function TradesPage() {
     }
   }, [user]);
 
-  // Real-time simulated polling (every 5 seconds)
   useEffect(() => {
     if (!user) return;
 
-    const interval = setInterval(async () => {
-      try {
-        const list = await tradeService.getTrades();
-        setTrades(list);
-      } catch (err) {
-        // fail silently during background polling
-      }
-    }, 5000);
+    const socketUrl = (import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api$/, "");
+    const socket = io(socketUrl, { transports: ["websocket"], reconnection: true });
+    socketRef.current = socket;
 
-    return () => clearInterval(interval);
-  }, [user]);
+    socket.on("trade-message", ({ tradeId, message }) => {
+      setTrades((prev) =>
+        prev.map((trade) => (trade.id === tradeId ? { ...trade, messages: [...(trade.messages || []), message] } : trade))
+      );
+    });
+
+    return () => {
+      socket.off("trade-message");
+      socket.disconnect();
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket || !activeChatTradeId) return;
+
+    socket.emit("join-trade", activeChatTradeId);
+
+    return () => {
+      socket.emit("leave-trade", activeChatTradeId);
+    };
+  }, [activeChatTradeId]);
 
   // Send message handler
   const handleSendMessage = async (e, tradeId) => {
@@ -94,16 +112,43 @@ function TradesPage() {
     setMessageSending(true);
     try {
       const updatedMessages = await tradeService.sendTradeMessage(tradeId, typedMessage.trim());
-      setTrades(
-        trades.map((t) =>
-          t.id === tradeId ? { ...t, messages: updatedMessages } : t
-        )
+      setTrades((prev) =>
+        prev.map((t) => (t.id === tradeId ? { ...t, messages: updatedMessages } : t))
       );
       setTypedMessage("");
     } catch (err) {
       toast.error("Failed to send message.");
     } finally {
       setMessageSending(false);
+    }
+  };
+
+  const handleCompleteTrade = async (tradeId, partnerName) => {
+    try {
+      setLoading(true);
+      await tradeService.completeTrade(tradeId);
+      toast.success(`Swap completed with ${partnerName}. You can leave a review now.`, { icon: "🤝" });
+      await fetchTradesList();
+    } catch (err) {
+      toast.error("Failed to complete trade.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmitReview = async (tradeId) => {
+    const draft = reviewDrafts[tradeId] || { score: 5, comment: "" };
+
+    try {
+      setSubmittingReviewId(tradeId);
+      await tradeService.reviewTrade(tradeId, draft.score, draft.comment);
+      setTrades((prev) => prev.map((trade) => (trade.id === tradeId ? { ...trade, reviewSubmitted: true } : trade)));
+      setReviewDrafts((prev) => ({ ...prev, [tradeId]: { score: 5, comment: "" } }));
+      toast.success("Review submitted. Thanks for helping the community.");
+    } catch (err) {
+      toast.error(err.message || "Unable to submit review.");
+    } finally {
+      setSubmittingReviewId(null);
     }
   };
 
@@ -393,11 +438,11 @@ function TradesPage() {
                           <MessageSquare size={14} className="text-indigo-650" />
                           Chat Conversation
                         </h5>
-                        <span className="text-[10px] text-slate-400 font-semibold">Simulated Real-time</span>
+                        <span className="text-[10px] text-slate-400 font-semibold">Live chat</span>
                       </div>
 
                       {/* Chat Messages Feed Container */}
-                      <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1 bg-slate-50/50 rounded-2xl p-4 border border-slate-100 flex flex-col">
+                      <div className="space-y-3 max-h-55 overflow-y-auto pr-1 bg-slate-50/50 rounded-2xl p-4 border border-slate-100 flex flex-col">
                         {trade.messages && trade.messages.length > 0 ? (
                           trade.messages.map((msg, msgIdx) => {
                             const isMe = msg.sender === user.id || msg.sender === user._id;
@@ -410,7 +455,7 @@ function TradesPage() {
                                     : "bg-white border border-slate-200/80 text-slate-800 rounded-tl-none shadow-[0_1px_2px_rgba(0,0,0,0.01)]"
                                   }
                                 `}>
-                                  <p className="m-0 break-words">{msg.text}</p>
+                                  <p className="m-0 wrap-break-word">{msg.text}</p>
                                 </div>
                                 <span className="text-[9px] text-slate-400 mt-1 font-semibold">
                                   {isMe ? "You" : msg.senderName} • {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -443,6 +488,60 @@ function TradesPage() {
                           Send
                         </button>
                       </form>
+                    </div>
+                  )}
+
+                  {trade.statusCode === "accepted" && (
+                    <div className="flex justify-end gap-2.5 mt-5 pt-4 border-t border-slate-100">
+                      <button
+                        onClick={() => handleCompleteTrade(trade.id, partnerName)}
+                        disabled={loading}
+                        className="flex items-center gap-1.5 px-4.5 py-2.5 bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-bold uppercase tracking-wider rounded-xl transition cursor-pointer shadow-sm disabled:opacity-50"
+                      >
+                        <Check size={14} /> Mark Completed
+                      </button>
+                    </div>
+                  )}
+
+                  {trade.statusCode === "completed" && (
+                    <div className="mt-5 pt-4 border-t border-slate-100 rounded-2xl bg-slate-50/60 p-4 space-y-3">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                        <Star size={15} className="text-amber-500" />
+                        Leave a review for this swap
+                      </div>
+                      {trade.reviewSubmitted ? (
+                        <div className="text-sm text-emerald-700">Your review has been submitted. Thanks for helping others trade confidently.</div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Rating</label>
+                            <select
+                              value={reviewDrafts[trade.id]?.score || 5}
+                              onChange={(e) => setReviewDrafts((prev) => ({ ...prev, [trade.id]: { ...(prev[trade.id] || {}), score: Number(e.target.value) } }))}
+                              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                            >
+                              {[5, 4, 3, 2, 1].map((value) => (
+                                <option key={value} value={value}>{value} ★</option>
+                              ))}
+                            </select>
+                          </div>
+                          <textarea
+                            rows="3"
+                            value={reviewDrafts[trade.id]?.comment || ""}
+                            onChange={(e) => setReviewDrafts((prev) => ({ ...prev, [trade.id]: { ...(prev[trade.id] || {}), comment: e.target.value } }))}
+                            placeholder="Share a few words about this trade..."
+                            className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-emerald-500 focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleSubmitReview(trade.id)}
+                            disabled={submittingReviewId === trade.id}
+                            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-bold uppercase tracking-wider rounded-xl transition cursor-pointer shadow-sm disabled:opacity-50"
+                          >
+                            <Star size={14} /> {submittingReviewId === trade.id ? "Submitting..." : "Submit Review"}
+                          </button>
+                        </>
+                      )}
                     </div>
                   )}
 
