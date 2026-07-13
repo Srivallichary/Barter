@@ -1,6 +1,30 @@
+const mongoose = require("mongoose");
 const Trade = require("../models/trade");
 const Item = require("../models/item");
 const User = require("../models/user");
+const Review = require("../models/review");
+
+const getRequesterId = (req) => req.user?.userId || req.user?.id || req.user?._id;
+
+const syncUserRating = async (userId) => {
+    if (!userId) return;
+
+    const user = await User.findById(userId);
+    if (!user) return;
+
+    const reviews = await Review.find({ reviewee: userId });
+    const reviewCount = reviews.length;
+    const averageRating = reviewCount > 0
+        ? Number((reviews.reduce((sum, review) => sum + review.score, 0) / reviewCount).toFixed(1))
+        : Number(user.rating || 0);
+
+    await User.findByIdAndUpdate(userId, {
+        $set: {
+            rating: averageRating,
+            reviewCount,
+        }
+    });
+};
 
 /**
  * @desc    Create a trade request
@@ -9,29 +33,38 @@ const User = require("../models/user");
  */
 const createTrade = async (req, res) => {
     try {
-        const {
-            fromUser,
-            toUser,
-            offeredItem,
-            requestedItem
-        } = req.body;
+        const requesterId = getRequesterId(req);
 
-        // Check required fields
-        if (!fromUser || !toUser || !offeredItem || !requestedItem) {
+        if (!requesterId) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication required"
+            });
+        }
+
+        const { toUser, offeredItem, requestedItem } = req.body;
+
+        if (!toUser || !offeredItem || !requestedItem) {
             return res.status(400).json({
                 success: false,
                 message: "Please provide all required fields"
             });
         }
 
-        if (offeredItem === requestedItem) {
-            return res.status(400).json({
+        if (String(offeredItem) === String(requestedItem)) {
+            return res.status(409).json({
                 success: false,
                 message: "You cannot trade an item with itself"
             });
         }
 
-        // Check if both items exist
+        if (!mongoose.Types.ObjectId.isValid(offeredItem) || !mongoose.Types.ObjectId.isValid(requestedItem) || !mongoose.Types.ObjectId.isValid(toUser)) {
+            return res.status(422).json({
+                success: false,
+                message: "Invalid item or user id"
+            });
+        }
+
         const offered = await Item.findById(offeredItem);
         const requested = await Item.findById(requestedItem);
 
@@ -42,39 +75,40 @@ const createTrade = async (req, res) => {
             });
         }
 
-        // Check if items are available
-        if (
-            offered.status !== "available" ||
-            requested.status !== "available"
-        ) {
+        if (String(offered.owner) !== String(requesterId)) {
+            return res.status(403).json({
+                success: false,
+                message: "You can only trade items you own"
+            });
+        }
+
+        if (offered.status !== "available" || requested.status !== "available") {
             return res.status(400).json({
                 success: false,
                 message: "One or both items are not available for trade"
             });
         }
 
-        // Create trade request
         const trade = await Trade.create({
-            fromUser,
+            fromUser: requesterId,
             toUser,
             offeredItem,
-            requestedItem
+            requestedItem,
+            status: "pending"
         });
 
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             message: "Trade request created successfully",
-            trade
+            data: { trade }
         });
-
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || "Failed to create trade"
         });
     }
 };
-
 
 /**
  * @desc    Get all trades for a user
@@ -83,14 +117,16 @@ const createTrade = async (req, res) => {
  */
 const getUserTrades = async (req, res) => {
     try {
-        const userId = req.params.userId || (req.user ? req.user.id : null);
-        
-        if (!userId) {
-            return res.status(400).json({
+        const requesterId = getRequesterId(req);
+
+        if (!requesterId) {
+            return res.status(401).json({
                 success: false,
-                message: "User ID is required"
+                message: "Authentication required"
             });
         }
+
+        const userId = req.params.userId || requesterId;
 
         const trades = await Trade.find({
             $or: [
@@ -98,21 +134,23 @@ const getUserTrades = async (req, res) => {
                 { toUser: userId }
             ]
         })
-        .populate("fromUser", "name email avatar")
-        .populate("toUser", "name email avatar")
-        .populate("offeredItem", "title category status image")
-        .populate("requestedItem", "title category status image");
+            .populate("fromUser", "name email avatar")
+            .populate("toUser", "name email avatar")
+            .populate("offeredItem", "title category status images image owner")
+            .populate("requestedItem", "title category status images image owner");
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
-            count: trades.length,
-            trades
+            message: "Trades retrieved successfully",
+            data: {
+                trades,
+                count: trades.length
+            }
         });
-
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || "Failed to fetch trades"
         });
     }
 };
@@ -124,9 +162,16 @@ const getUserTrades = async (req, res) => {
  */
 const acceptTrade = async (req, res) => {
     try {
-        const { meetupLocation, meetupTime } = req.body;
+        const requesterId = getRequesterId(req);
 
-        // Find trade
+        if (!requesterId) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication required"
+            });
+        }
+
+        const { meetupLocation, meetupTime } = req.body;
         const trade = await Trade.findById(req.params.id);
 
         if (!trade) {
@@ -136,7 +181,13 @@ const acceptTrade = async (req, res) => {
             });
         }
 
-        // Check if trade is still pending
+        if (String(trade.toUser) !== String(requesterId)) {
+            return res.status(403).json({
+                success: false,
+                message: "Only the recipient can accept this trade"
+            });
+        }
+
         if (trade.status !== "pending") {
             return res.status(400).json({
                 success: false,
@@ -144,23 +195,21 @@ const acceptTrade = async (req, res) => {
             });
         }
 
-        // Update trade status and meetup details
         trade.status = "accepted";
         if (meetupLocation) trade.meetupLocation = meetupLocation;
         if (meetupTime) trade.meetupTime = meetupTime;
 
         await trade.save();
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             message: "Trade accepted successfully",
-            trade
+            data: { trade }
         });
-
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || "Failed to accept trade"
         });
     }
 };
@@ -172,7 +221,15 @@ const acceptTrade = async (req, res) => {
  */
 const rejectTrade = async (req, res) => {
     try {
-        // Find trade
+        const requesterId = getRequesterId(req);
+
+        if (!requesterId) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication required"
+            });
+        }
+
         const trade = await Trade.findById(req.params.id);
 
         if (!trade) {
@@ -182,7 +239,13 @@ const rejectTrade = async (req, res) => {
             });
         }
 
-        // Check if trade is still pending
+        if (String(trade.toUser) !== String(requesterId)) {
+            return res.status(403).json({
+                success: false,
+                message: "Only the recipient can reject this trade"
+            });
+        }
+
         if (trade.status !== "pending") {
             return res.status(400).json({
                 success: false,
@@ -190,21 +253,18 @@ const rejectTrade = async (req, res) => {
             });
         }
 
-        // Update trade status
         trade.status = "rejected";
-
         await trade.save();
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             message: "Trade rejected successfully",
-            trade
+            data: { trade }
         });
-
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || "Failed to reject trade"
         });
     }
 };
@@ -216,7 +276,15 @@ const rejectTrade = async (req, res) => {
  */
 const completeTrade = async (req, res) => {
     try {
-        // Find trade
+        const requesterId = getRequesterId(req);
+
+        if (!requesterId) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication required"
+            });
+        }
+
         const trade = await Trade.findById(req.params.id);
 
         if (!trade) {
@@ -226,7 +294,13 @@ const completeTrade = async (req, res) => {
             });
         }
 
-        // Trade must be accepted before completion
+        if (String(trade.toUser) !== String(requesterId) && String(trade.fromUser) !== String(requesterId)) {
+            return res.status(403).json({
+                success: false,
+                message: "You are not authorized to complete this trade"
+            });
+        }
+
         if (trade.status !== "accepted") {
             return res.status(400).json({
                 success: false,
@@ -234,29 +308,26 @@ const completeTrade = async (req, res) => {
             });
         }
 
-        // Update trade status
         trade.status = "completed";
         await trade.save();
 
-        // Update both items
-        await Item.findByIdAndUpdate(trade.offeredItem, {
-            status: "traded"
-        });
+        await Item.findByIdAndUpdate(trade.offeredItem, { status: "traded" });
+        await Item.findByIdAndUpdate(trade.requestedItem, { status: "traded" });
 
-        await Item.findByIdAndUpdate(trade.requestedItem, {
-            status: "traded"
-        });
+        await User.findByIdAndUpdate(trade.fromUser, { $inc: { completedTrades: 1 } });
+        await User.findByIdAndUpdate(trade.toUser, { $inc: { completedTrades: 1 } });
+        await syncUserRating(trade.fromUser);
+        await syncUserRating(trade.toUser);
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             message: "Trade completed successfully",
-            trade
+            data: { trade }
         });
-
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || "Failed to complete trade"
         });
     }
 };
@@ -276,6 +347,7 @@ const addTradeMessage = async (req, res) => {
             });
         }
 
+        const senderId = getRequesterId(req);
         const trade = await Trade.findById(req.params.id);
         if (!trade) {
             return res.status(404).json({
@@ -284,28 +356,113 @@ const addTradeMessage = async (req, res) => {
             });
         }
 
-        // Get sender profile details
-        const senderUser = await User.findById(req.user.id);
+        if (String(trade.fromUser) !== String(senderId) && String(trade.toUser) !== String(senderId)) {
+            return res.status(403).json({
+                success: false,
+                message: "You are not a participant in this trade"
+            });
+        }
+
+        const senderUser = await User.findById(senderId);
         const senderName = senderUser ? senderUser.name : "Member";
-
-        // Add message
-        trade.messages.push({
-            sender: req.user.id,
+        const messagePayload = {
+            sender: senderId,
             senderName,
-            text
-        });
+            text,
+            createdAt: new Date()
+        };
 
+        trade.messages.push(messagePayload);
         await trade.save();
 
-        res.status(200).json({
-            success: true,
-            messages: trade.messages
-        });
+        const io = req.app.get("io");
+        if (io) {
+            io.to(`trade:${trade._id}`).emit("trade-message", {
+                tradeId: trade._id.toString(),
+                message: messagePayload
+            });
+        }
 
+        return res.status(200).json({
+            success: true,
+            data: { messages: trade.messages }
+        });
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: error.message
+        });
+    }
+};
+
+const reviewTrade = async (req, res) => {
+    try {
+        const requesterId = getRequesterId(req);
+        if (!requesterId) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication required"
+            });
+        }
+
+        const trade = await Trade.findById(req.params.id);
+        if (!trade) {
+            return res.status(404).json({
+                success: false,
+                message: "Trade not found"
+            });
+        }
+
+        if (String(trade.fromUser) !== String(requesterId) && String(trade.toUser) !== String(requesterId)) {
+            return res.status(403).json({
+                success: false,
+                message: "You are not a participant in this trade"
+            });
+        }
+
+        if (trade.status !== "completed") {
+            return res.status(400).json({
+                success: false,
+                message: "Only completed trades can be reviewed"
+            });
+        }
+
+        const { score, comment = "" } = req.body;
+        if (!Number.isInteger(score) || score < 1 || score > 5) {
+            return res.status(400).json({
+                success: false,
+                message: "Please provide a rating between 1 and 5"
+            });
+        }
+
+        const existingReview = await Review.findOne({ trade: trade._id, reviewer: requesterId });
+        if (existingReview) {
+            return res.status(409).json({
+                success: false,
+                message: "You have already reviewed this trade"
+            });
+        }
+
+        const revieweeId = String(trade.fromUser) === String(requesterId) ? trade.toUser : trade.fromUser;
+        const review = await Review.create({
+            trade: trade._id,
+            reviewer: requesterId,
+            reviewee: revieweeId,
+            score,
+            comment
+        });
+
+        await syncUserRating(revieweeId);
+
+        return res.status(201).json({
+            success: true,
+            message: "Review submitted successfully",
+            data: { review }
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to submit review"
         });
     }
 };
@@ -316,5 +473,6 @@ module.exports = {
     acceptTrade,
     rejectTrade,
     completeTrade,
-    addTradeMessage
+    addTradeMessage,
+    reviewTrade
 };

@@ -1,6 +1,7 @@
 import React, { useState, useContext } from "react";
 import { User, ShieldCheck, Mail, Phone, MapPin, Calendar, Star, Edit3, FolderOpen, ArrowLeftRight, CheckCircle, AlertCircle } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
+import { authService } from "../services/auth";
 import { AuthContext } from "../context/AuthContext";
 import Layout from "../components/common/Layout";
 import Card from "../components/common/Card";
@@ -11,7 +12,7 @@ import Modal from "../components/common/Modal";
 import Input from "../components/common/Input";
 
 function ProfilePage() {
-  const { user, updateProfile } = useContext(AuthContext);
+  const { user, updateProfile, setCurrentUser } = useContext(AuthContext);
 
   // Edit Modal States
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -20,6 +21,8 @@ function ProfilePage() {
   const [editDepartment, setEditDepartment] = useState("");
   const [editAvatar, setEditAvatar] = useState("");
   const [formErrors, setFormErrors] = useState({});
+  const [selectedIdFile, setSelectedIdFile] = useState(null);
+  const [uploadingId, setUploadingId] = useState(false);
 
   // Auth lock screen
   if (!user) {
@@ -67,17 +70,45 @@ function ProfilePage() {
       return;
     }
 
-    // Save changes back into AuthContext using updateProfile
-    await updateProfile({
+    const updatedUser = await updateProfile({
       name: editName,
       phone: editPhone,
       department: editDepartment,
       avatar: editAvatar,
     });
-    
+    setCurrentUser(updatedUser);
     setIsEditModalOpen(false);
     toast.success("Profile updated successfully!", { icon: "👤" });
   };
+
+  const handleIdFileChange = (e) => {
+    setSelectedIdFile(e.target.files[0] || null);
+  };
+
+  const handleUploadIdCard = async () => {
+    if (!selectedIdFile) {
+      toast.error("Please select your college ID image before uploading.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("idCard", selectedIdFile);
+
+    try {
+      setUploadingId(true);
+      const res = await authService.uploadIdCard(formData);
+      const updatedUser = res.data?.user || res.user || user;
+      setCurrentUser(updatedUser);
+      toast.success("ID uploaded successfully. Verification is now pending.");
+      setSelectedIdFile(null);
+    } catch (error) {
+      toast.error(error.message || "Failed to upload ID card.");
+    } finally {
+      setUploadingId(false);
+    }
+  };
+
+  const verificationReminder = user.verificationStatus !== "verified" && user.verificationStatus !== "pending";
 
   const statMetrics = [
     { value: user.completedTrades || 0, label: "Completed Swaps", icon: <CheckCircle size={18} className="text-emerald-500" /> },
@@ -103,7 +134,7 @@ function ProfilePage() {
                 <div className="flex items-center gap-1.5 mt-1.5 justify-center">
                   <ShieldCheck size={14} className="text-indigo-500" />
                   <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full">
-                    Verified Member
+                    {user.verificationStatus === 'verified' ? 'Verified Student' : user.verificationStatus === 'pending' ? 'Verification Pending' : 'Student Verification Required'}
                   </span>
                 </div>
 
@@ -132,7 +163,7 @@ function ProfilePage() {
                   <Mail size={16} className="text-slate-400 shrink-0" />
                   <div>
                     <p className="text-[10px] text-slate-400 uppercase font-bold leading-none">Email Address</p>
-                    <p className="text-slate-700 font-semibold mt-1 truncate max-w-[170px]">{user.email || `${user.name.toLowerCase()}@example.com`}</p>
+                    <p className="text-slate-700 font-semibold mt-1 truncate max-w-xs">{user.email || `${user.name.toLowerCase()}@example.com`}</p>
                   </div>
                 </div>
 
@@ -153,11 +184,65 @@ function ProfilePage() {
                 </div>
               </div>
             </Card>
+
+            <Card className="bg-white border border-slate-200/55 p-6 shadow-sm" hoverable={false}>
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">College ID Verification</h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Upload a clear image of your college ID card. Our admin team will review it and update your verification status.
+                  </p>
+                </div>
+
+                {user.verificationStatus === 'verified' ? (
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                    Your student identity is verified.
+                  </div>
+                ) : user.verificationStatus === 'pending' ? (
+                  <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+                    Your college ID is under review. You can upload a new copy if needed.
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                    Upload your college ID to verify your student status and gain full access to the platform.
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleIdFileChange}
+                    className="block w-full text-xs text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700"
+                  />
+                  <Button
+                    onClick={handleUploadIdCard}
+                    variant="primary"
+                    size="sm"
+                    disabled={uploadingId}
+                  >
+                    {uploadingId ? "Uploading..." : user.verificationStatus === 'verified' ? "Update ID" : "Upload College ID"}
+                  </Button>
+                </div>
+              </div>
+            </Card>
           </div>
 
           {/* Right Column: Statistics + Activity lists (2 Cols) */}
           <div className="md:col-span-2 space-y-6">
             
+            {verificationReminder && (
+              <Card className="border border-emerald-200/70 bg-emerald-50/70 p-4 shadow-sm" hoverable={false}>
+                <div className="flex items-start gap-3">
+                  <AlertCircle size={16} className="text-emerald-700 mt-0.5 shrink-0" />
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900">Verification reminder</h3>
+                    <p className="text-sm text-slate-600 mt-1">Upload your college ID to build trust and unlock the full Barter experience.</p>
+                  </div>
+                </div>
+              </Card>
+            )}
+
             {/* Stats Metrics Grid */}
             <div className="grid grid-cols-3 gap-4">
               {statMetrics.map((metric, idx) => (
@@ -186,34 +271,8 @@ function ProfilePage() {
                 Recent Swap Activity
               </h3>
 
-              <div className="space-y-4">
-                {/* Mock Activity row 1 */}
-                <div className="flex items-center justify-between p-3.5 bg-white/45 rounded-2xl border border-white/30 text-xs sm:text-sm shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-emerald-50 text-emerald-700 rounded-lg flex items-center justify-center font-bold border border-emerald-100/50">
-                      SW
-                    </div>
-                    <div>
-                      <p className="font-extrabold text-slate-805">Swapped Dorm Refrigerator</p>
-                      <p className="text-slate-400 mt-0.5">Traded with Sarah Jenkins</p>
-                    </div>
-                  </div>
-                  <Badge variant="success">Completed</Badge>
-                </div>
-
-                {/* Mock Activity row 2 */}
-                <div className="flex items-center justify-between p-3.5 bg-white/45 rounded-2xl border border-white/30 text-xs sm:text-sm shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-indigo-50 text-indigo-700 rounded-lg flex items-center justify-center font-bold border border-indigo-100/40">
-                      LI
-                    </div>
-                    <div>
-                      <p className="font-extrabold text-slate-805">Listed Chemistry Lab Coat</p>
-                      <p className="text-slate-400 mt-0.5">Category: Clothing & Gear</p>
-                    </div>
-                  </div>
-                  <Badge variant="slate">Active</Badge>
-                </div>
+              <div className="py-10 text-center text-sm text-slate-500">
+                Your recent swap activity will appear here once you start trading on Barter.
               </div>
             </Card>
           </div>

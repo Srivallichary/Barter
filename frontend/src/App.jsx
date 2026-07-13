@@ -10,6 +10,7 @@ import MyItemsPage from "./pages/MyItemsPage";
 import ItemDetailPage from "./pages/ItemDetailPage";
 import TradesPage from "./pages/TradesPage";
 import ProfilePage from "./pages/ProfilePage";
+import AdminVerificationPage from "./pages/AdminVerificationPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 function App() {
@@ -25,6 +26,7 @@ function App() {
           <Route path="/items/:id" element={<ItemDetailPage />} />
           <Route path="/trades" element={<ProtectedRoute><TradesPage /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+          <Route path="/admin/verification" element={<ProtectedRoute><AdminVerificationPage /></ProtectedRoute>} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

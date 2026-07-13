@@ -1,5 +1,5 @@
 import React, { useState, useContext } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { User, LogIn } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 
@@ -15,12 +15,11 @@ import AuthHeader from "../components/auth/AuthHeader";
 import InputField from "../components/auth/InputField";
 import PasswordInput from "../components/auth/PasswordInput";
 import LoadingButton from "../components/auth/LoadingButton";
-import Divider from "../components/auth/Divider";
-import GoogleButton from "../components/auth/GoogleButton";
 
 function LoginPage() {
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Form states
   const [username, setUsername] = useState("");
@@ -49,11 +48,6 @@ function LoginPage() {
   // Checks whether the required fields are filled and valid to enable the submit trigger
   const isFormValid = username.trim().length >= 4 && password.length >= 6;
 
-  // Google Sign-In placeholder click
-  const handleGoogleLogin = () => {
-    toast("Google OAuth popup triggered!", { icon: "🚀" });
-  };
-
   // Submit Handler
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -66,7 +60,7 @@ function LoginPage() {
       
       toast.success(`Welcome back, ${loggedUser.name}!`, { icon: "👋" });
       setTimeout(() => {
-        navigate("/");
+        navigate(location.state?.from?.pathname || "/", { replace: true });
       }, 1200);
     } catch (err) {
       toast.error(err.message || "Invalid credentials. Try Sarah101 / 123456.");
@@ -154,13 +148,6 @@ function LoginPage() {
               {isLoading ? "Logging in..." : "Login"}
             </LoadingButton>
 
-            {/* Google provider split */}
-            <Divider />
-
-            <GoogleButton
-              onClick={handleGoogleLogin}
-              disabled={isLoading}
-            />
           </div>
         </form>
       </AuthCard>

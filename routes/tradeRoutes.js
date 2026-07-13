@@ -1,13 +1,14 @@
 const express = require("express");
-const router = express.Router();
 const auth = require("../middleware/auth");
+const router = express.Router();
 const {
     createTrade,
     getUserTrades,
     acceptTrade,
     rejectTrade,
     completeTrade,
-    addTradeMessage
+    addTradeMessage,
+    reviewTrade
 } = require("../controllers/tradeController");
 
 // Create Trade Request
@@ -30,5 +31,8 @@ router.put("/:id/complete", auth, completeTrade);
 
 // Add Message to Trade Chat
 router.post("/:id/message", auth, addTradeMessage);
+
+// Review a completed trade
+router.post("/:id/review", auth, reviewTrade);
 
 module.exports = router;

@@ -29,7 +29,10 @@ export function AuthProvider({ children }) {
       // Try to fetch fresh profile from backend
       try {
         const profileData = await profileService.getProfile();
-        const freshUser = profileData.user || profileData;
+        const freshUser =
+          profileData?.data?.user ||
+          profileData?.user ||
+          profileData;
         setUser(freshUser);
 
         // Update cached copy
@@ -110,6 +113,11 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const setCurrentUser = (userData) => {
+    setUser(userData);
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
+  };
+
   // ──────────────────────────────────────────────
   // Registration: calls real POST /api/auth/register
   // ──────────────────────────────────────────────
@@ -117,6 +125,10 @@ export function AuthProvider({ children }) {
     setLoading(true);
     try {
       const res = await authService.registerUser(username, password, email);
+      const registeredUser = res.user || res;
+      if (registeredUser) {
+        setCurrentUser(registeredUser);
+      }
       return res;
     } finally {
       setLoading(false);
@@ -154,6 +166,7 @@ export function AuthProvider({ children }) {
         register,
         updateProfile,
         checkAuth,
+        setCurrentUser,
         isAuthenticated,
       }}
     >

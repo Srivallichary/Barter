@@ -1,19 +1,26 @@
 const express = require("express");
-const router = express.Router();
 const auth = require("../middleware/auth");
+const upload = require("../middleware/upload");
+const router = express.Router();
+
 const {
     getProfile,
     getRatings,
-    updateProfile
+    updateProfile,
+    profile,
+    ratings,
+    uploadIdCard,
+    getPendingVerifications,
+    reviewVerification
 } = require("../controllers/userController");
 
-// Get profile
 router.get("/profile", auth, getProfile);
-
-// Get ratings
 router.get("/ratings", auth, getRatings);
-
-// Update profile
 router.put("/profile", auth, updateProfile);
+router.post("/upload-id-card", auth, upload.single('idCard'), uploadIdCard);
+router.get("/verification/pending", auth, getPendingVerifications);
+router.post("/verification/:userId", auth, reviewVerification);
+router.get("/:id/profile", auth, profile);
+router.get("/:id/ratings", auth, ratings);
 
 module.exports = router;

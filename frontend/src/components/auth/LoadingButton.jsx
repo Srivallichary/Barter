@@ -13,11 +13,11 @@ function LoadingButton({
   ...props
 }) {
   const baseClasses =
-    "inline-flex items-center justify-center font-bold tracking-wide transition-all duration-300 ease-out cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2";
+    "inline-flex items-center justify-center font-bold tracking-wide transition-all duration-300 ease-out cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-[#51D95F] focus-visible:ring-offset-2";
 
   const variants = {
     primary:
-      "bg-indigo-600 text-white hover:bg-indigo-700 active:bg-indigo-800 shadow-[0_4px_15px_rgba(99,102,241,0.15)]",
+      "bg-[#51D95F] text-white hover:bg-[#3fc94c] active:bg-[#2fa53e] shadow-[0_4px_15px_rgba(81,217,95,0.15)]",
     secondary:
       "bg-slate-100/90 text-slate-700 hover:bg-slate-200 active:bg-slate-300",
     outline:

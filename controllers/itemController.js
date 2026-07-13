@@ -1,4 +1,8 @@
+const mongoose = require("mongoose");
 const Item = require("../models/item");
+
+const getRequesterId = (req) => req.user?.userId || req.user?.id || req.user?._id;
+
 /**
  * @desc    Create a new item
  * @route   POST /api/items
@@ -6,10 +10,18 @@ const Item = require("../models/item");
  */
 const createItem = async (req, res) => {
     try {
-        const { title, description, category, image } = req.body;
-        const owner = req.user ? req.user.id : req.body.owner;
+        const { title, description, category, condition, location, tags, estimatedValue, status, image } = req.body;
+        const owner = req.body.owner || getRequesterId(req);
+        const images = req.files
+            ? req.files.map((file) => file.filename)
+            : req.file
+                ? [req.file.filename]
+                : Array.isArray(req.body.images)
+                    ? req.body.images
+                    : req.body.image
+                        ? [req.body.image]
+                        : [];
 
-        // Check required fields
         if (!title || !description || !category || !owner) {
             return res.status(400).json({
                 success: false,
@@ -21,20 +33,25 @@ const createItem = async (req, res) => {
             title,
             description,
             category,
-            image,
-            owner
+            condition,
+            images,
+            image: image || images[0] || "",
+            owner,
+            location,
+            tags,
+            estimatedValue,
+            status
         });
 
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             message: "Item created successfully",
-            item
+            data: { item }
         });
-
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || "Failed to create item"
         });
     }
 };
@@ -46,18 +63,49 @@ const createItem = async (req, res) => {
  */
 const getAllItems = async (req, res) => {
     try {
-        const items = await Item.find().populate("owner", "name email avatar");
+        const { category, condition, location, keyword, owner, status, sort } = req.query;
+        const query = {};
 
-        res.status(200).json({
+        if (category) query.category = category;
+        if (condition) query.condition = condition;
+        if (location) query.location = location;
+        if (status) query.status = status;
+        if (owner) {
+            query.owner = mongoose.Types.ObjectId.isValid(owner)
+                ? new mongoose.Types.ObjectId(owner)
+                : owner;
+        }
+
+        if (keyword) {
+            query.$or = [
+                { title: { $regex: keyword, $options: "i" } },
+                { description: { $regex: keyword, $options: "i" } },
+                { tags: { $regex: keyword, $options: "i" } }
+            ];
+        }
+
+        let sortOption = { createdAt: -1 };
+
+        if (sort === "oldest") {
+            sortOption = { createdAt: 1 };
+        } else if (sort === "title") {
+            sortOption = { title: 1 };
+        }
+
+        const items = await Item.find(query).sort(sortOption).populate("owner", "name email avatar");
+
+        return res.status(200).json({
             success: true,
-            count: items.length,
-            items
+            message: "Items retrieved successfully",
+            data: {
+                items,
+                count: items.length
+            }
         });
-
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || "Failed to fetch items"
         });
     }
 };
@@ -69,6 +117,13 @@ const getAllItems = async (req, res) => {
  */
 const getItemById = async (req, res) => {
     try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(422).json({
+                success: false,
+                message: "Invalid item id"
+            });
+        }
+
         const item = await Item.findById(req.params.id).populate("owner", "name email avatar");
 
         if (!item) {
@@ -78,15 +133,15 @@ const getItemById = async (req, res) => {
             });
         }
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
-            item
+            message: "Item retrieved successfully",
+            data: { item }
         });
-
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || "Failed to fetch item"
         });
     }
 };
@@ -98,6 +153,13 @@ const getItemById = async (req, res) => {
  */
 const updateItem = async (req, res) => {
     try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(422).json({
+                success: false,
+                message: "Invalid item id"
+            });
+        }
+
         const item = await Item.findById(req.params.id);
 
         if (!item) {
@@ -107,25 +169,52 @@ const updateItem = async (req, res) => {
             });
         }
 
+        const requesterId = getRequesterId(req);
+
+        if (!requesterId) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication required"
+            });
+        }
+
+        if (String(item.owner) !== String(requesterId)) {
+            return res.status(403).json({
+                success: false,
+                message: "You are not authorized to update this item"
+            });
+        }
+
+        const updateData = { ...req.body };
+        delete updateData.owner;
+        delete updateData._id;
+
+        if (req.file) {
+            updateData.images = [req.file.filename];
+            updateData.image = req.file.filename;
+        } else if (req.files) {
+            updateData.images = req.files.map((file) => file.filename);
+            updateData.image = req.files[0]?.filename || "";
+        }
+
         const updatedItem = await Item.findByIdAndUpdate(
             req.params.id,
-            req.body,
+            updateData,
             {
                 new: true,
                 runValidators: true
             }
         );
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             message: "Item updated successfully",
-            item: updatedItem
+            data: { item: updatedItem }
         });
-
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || "Failed to update item"
         });
     }
 };
@@ -137,7 +226,13 @@ const updateItem = async (req, res) => {
  */
 const deleteItem = async (req, res) => {
     try {
-        // Check if item exists
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(422).json({
+                success: false,
+                message: "Invalid item id"
+            });
+        }
+
         const item = await Item.findById(req.params.id);
 
         if (!item) {
@@ -147,18 +242,32 @@ const deleteItem = async (req, res) => {
             });
         }
 
-        // Delete item
+        const requesterId = getRequesterId(req);
+
+        if (!requesterId) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication required"
+            });
+        }
+
+        if (String(item.owner) !== String(requesterId)) {
+            return res.status(403).json({
+                success: false,
+                message: "You are not authorized to delete this item"
+            });
+        }
+
         await Item.findByIdAndDelete(req.params.id);
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             message: "Item deleted successfully"
         });
-
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || "Failed to delete item"
         });
     }
 };
@@ -170,7 +279,13 @@ const deleteItem = async (req, res) => {
  */
 const getSmartMatches = async (req, res) => {
     try {
-        // Find the current item
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(422).json({
+                success: false,
+                message: "Invalid item id"
+            });
+        }
+
         const currentItem = await Item.findById(req.params.id);
 
         if (!currentItem) {
@@ -180,24 +295,25 @@ const getSmartMatches = async (req, res) => {
             });
         }
 
-        // Find similar items
         const matches = await Item.find({
             _id: { $ne: currentItem._id },
             category: currentItem.category,
             status: "available",
             owner: { $ne: currentItem.owner }
-        });
+        }).populate("owner", "name email avatar");
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
-            count: matches.length,
-            matches
+            message: "Matches retrieved successfully",
+            data: {
+                matches,
+                count: matches.length
+            }
         });
-
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || "Failed to fetch matches"
         });
     }
 };

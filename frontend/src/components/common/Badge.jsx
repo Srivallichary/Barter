@@ -1,7 +1,7 @@
 import React from "react";
 
 const dotColors = {
-  indigo: "bg-indigo-500 shadow-[0_0_6px_rgba(99,102,241,0.4)]",
+  indigo: "bg-[#51D95F] shadow-[0_0_6px_rgba(81,217,95,0.4)]",
   success: "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.4)]",
   blue: "bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.4)]",
   yellow: "bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.4)]",

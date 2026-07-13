@@ -1,95 +1,154 @@
+const mongoose = require("mongoose");
 const Wishlist = require("../models/wishlist");
+const Item = require("../models/item");
 
-/**
- * @desc    Get user's wishlist
- * @route   GET /api/wishlist
- * @access  Private
- */
+const getRequesterId = (req) => req.user?.userId || req.user?.id || req.user?._id;
+
 const getWishlist = async (req, res) => {
     try {
-        let wishlist = await Wishlist.findOne({ user: req.user.id });
-        
-        if (!wishlist) {
-            // Create an empty wishlist for the user
-            wishlist = await Wishlist.create({
-                user: req.user.id,
-                items: []
+        const userId = getRequesterId(req);
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication required"
             });
         }
 
-        res.status(200).json({
+        let wishlist = await Wishlist.findOne({ user: userId }).populate("items", "title category status images owner");
+
+        if (!wishlist) {
+            wishlist = await Wishlist.create({ user: userId, items: [] });
+        }
+
+        return res.status(200).json({
             success: true,
-            wishlist: wishlist.items
+            message: "Wishlist retrieved successfully",
+            data: {
+                wishlist,
+                count: wishlist.items.length
+            }
         });
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || "Failed to fetch wishlist"
         });
     }
 };
 
-/**
- * @desc    Add item to wishlist
- * @route   POST /api/wishlist/:itemId
- * @access  Private
- */
 const addToWishlist = async (req, res) => {
     try {
-        const { itemId } = req.params;
+        const userId = getRequesterId(req);
 
-        let wishlist = await Wishlist.findOne({ user: req.user.id });
-
-        if (!wishlist) {
-            wishlist = await Wishlist.create({
-                user: req.user.id,
-                items: []
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication required"
             });
         }
 
-        if (!wishlist.items.includes(itemId)) {
-            wishlist.items.push(itemId);
-            await wishlist.save();
+        const { itemId } = req.params;
+
+        if (!itemId) {
+            return res.status(400).json({
+                success: false,
+                message: "Item id is required"
+            });
         }
 
-        res.status(200).json({
+        if (!mongoose.Types.ObjectId.isValid(itemId)) {
+            return res.status(422).json({
+                success: false,
+                message: "Invalid item id"
+            });
+        }
+
+        const item = await Item.findById(itemId);
+
+        if (!item) {
+            return res.status(404).json({
+                success: false,
+                message: "Item not found"
+            });
+        }
+
+        let wishlist = await Wishlist.findOne({ user: userId });
+
+        if (!wishlist) {
+            wishlist = await Wishlist.create({ user: userId, items: [] });
+        }
+
+        const alreadySaved = wishlist.items.some((savedItem) => String(savedItem) === String(itemId));
+
+        if (alreadySaved) {
+            return res.status(409).json({
+                success: false,
+                message: "Item already exists in wishlist"
+            });
+        }
+
+        wishlist.items.push(itemId);
+        await wishlist.save();
+
+        const updatedWishlist = await Wishlist.findById(wishlist._id).populate("items", "title category status images owner");
+
+        return res.status(201).json({
             success: true,
             message: "Item added to wishlist",
-            wishlist: wishlist.items
+            data: { wishlist: updatedWishlist }
         });
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || "Failed to add item to wishlist"
         });
     }
 };
 
-/**
- * @desc    Remove item from wishlist
- * @route   DELETE /api/wishlist/:itemId
- * @access  Private
- */
 const removeFromWishlist = async (req, res) => {
     try {
-        const { itemId } = req.params;
+        const userId = getRequesterId(req);
 
-        let wishlist = await Wishlist.findOne({ user: req.user.id });
-
-        if (wishlist) {
-            wishlist.items = wishlist.items.filter(id => id.toString() !== itemId);
-            await wishlist.save();
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication required"
+            });
         }
 
-        res.status(200).json({
+        const { itemId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(itemId)) {
+            return res.status(422).json({
+                success: false,
+                message: "Invalid item id"
+            });
+        }
+
+        const wishlist = await Wishlist.findOne({ user: userId });
+
+        if (!wishlist) {
+            return res.status(404).json({
+                success: false,
+                message: "Wishlist not found"
+            });
+        }
+
+        wishlist.items = wishlist.items.filter((savedItem) => String(savedItem) !== String(itemId));
+        await wishlist.save();
+
+        const refreshedWishlist = await Wishlist.findById(wishlist._id).populate("items", "title category status images owner");
+
+        return res.status(200).json({
             success: true,
             message: "Item removed from wishlist",
-            wishlist: wishlist ? wishlist.items : []
+            data: { wishlist: refreshedWishlist }
         });
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || "Failed to remove item from wishlist"
         });
     }
 };
@@ -97,5 +156,7 @@ const removeFromWishlist = async (req, res) => {
 module.exports = {
     getWishlist,
     addToWishlist,
-    removeFromWishlist
+    removeFromWishlist,
+    addItemToWishlist: addToWishlist,
+    removeItemFromWishlist: removeFromWishlist
 };

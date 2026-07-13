@@ -1,6 +1,8 @@
 const express = require("express");
-const router = express.Router();
+const upload = require("../middleware/upload");
 const auth = require("../middleware/auth");
+
+const router = express.Router();
 const {
     createItem,
     getAllItems,
@@ -11,7 +13,7 @@ const {
 } = require("../controllers/itemController");
 
 // Create Item
-router.post("/", auth, createItem);
+router.post("/", auth, upload.single("image"), createItem);
 
 // Get All Items
 router.get("/", getAllItems);

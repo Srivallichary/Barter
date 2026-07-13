@@ -3,7 +3,7 @@ import { Loader2 } from "lucide-react";
 
 const variants = {
   primary:
-    "bg-indigo-650 text-white hover:bg-indigo-700 active:bg-indigo-800 shadow-[0_4px_15px_rgba(99,102,241,0.15)] hover:shadow-[0_4px_25px_rgba(99,102,241,0.25)]",
+    "bg-[#51D95F] text-white hover:bg-[#3fc94c] active:bg-[#2fa53e] shadow-[0_4px_15px_rgba(81,217,95,0.15)] hover:shadow-[0_4px_25px_rgba(81,217,95,0.25)]",
   secondary:
     "bg-slate-100/90 text-slate-700 hover:bg-slate-200 active:bg-slate-350",
   outline:
@@ -34,7 +34,7 @@ function Button({
   ...props
 }) {
   const baseClasses =
-    "inline-flex items-center justify-center font-bold tracking-wide transition-all duration-300 ease-out cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2";
+    "inline-flex items-center justify-center font-bold tracking-wide transition-all duration-300 ease-out cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-[#51D95F] focus-visible:ring-offset-2";
 
   const classes = `${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`;
 
