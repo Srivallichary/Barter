@@ -4,6 +4,7 @@ import { ArrowLeftRight, Check, X, Calendar, MapPin, MessageSquare, AlertCircle,
 import toast, { Toaster } from "react-hot-toast";
 import { io } from "socket.io-client";
 import { AuthContext } from "../context/AuthContext";
+import { getToken } from "../services/api";
 import Layout from "../components/common/Layout";
 import Card from "../components/common/Card";
 import Badge from "../components/common/Badge";
@@ -74,11 +75,26 @@ function TradesPage() {
     }
   }, [user]);
 
+  // Auto-open chat for first incoming pending trade to make chat obvious
+  useEffect(() => {
+    if (!user) return;
+    if (activeChatTradeId) return; // user already opened a chat
+    if (activeTab !== "incoming") return;
+    const incoming = trades.filter((t) => !t.isOutgoing && t.status === "Pending");
+    if (incoming && incoming.length > 0) {
+      setActiveChatTradeId(incoming[0].id);
+    }
+  }, [trades, user, activeTab, activeChatTradeId]);
+
   useEffect(() => {
     if (!user) return;
 
     const socketUrl = (import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api$/, "");
-    const socket = io(socketUrl, { transports: ["websocket"], reconnection: true });
+    const socket = io(socketUrl, {
+      transports: ["websocket"],
+      reconnection: true,
+      auth: { token: getToken() },
+    });
     socketRef.current = socket;
 
     socket.on("trade-message", ({ tradeId, message }) => {

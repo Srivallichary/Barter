@@ -5,6 +5,8 @@ const path = require("path");
 const fs = require("fs");
 const http = require("http");
 const { Server } = require("socket.io");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 const connectDB = require("./config/db");
 
 const authRoutes = require("./routes/authRoutes");
@@ -36,8 +38,28 @@ if (!fs.existsSync("uploads")) {
 }
 
 // Middleware
+// Basic hardening
+app.use(helmet());
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+
+// Rate limiting: basic global limiter and stricter auth limiter
+const globalLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 300, // limit each IP to 300 requests per windowMs
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+const authLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 10, // stricter for auth endpoints
+    message: { success: false, message: 'Too many requests, please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+app.use(globalLimiter);
 
 // Serve uploads folder as static
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -51,10 +73,11 @@ app.post("/api/upload", upload.single("image"), (req, res) => {
                 message: "No file uploaded"
             });
         }
+        const fileUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
         res.status(200).json({
             success: true,
             message: "File uploaded successfully!",
-            path: `/uploads/${req.file.filename}`
+            path: fileUrl
         });
     } catch (error) {
         res.status(500).json({
@@ -65,8 +88,8 @@ app.post("/api/upload", upload.single("image"), (req, res) => {
 });
 
 // Routes
-app.use("/api/auth", authRoutes);
-app.use("/auth", authRoutes);
+app.use("/api/auth", authLimiter, authRoutes);
+app.use("/auth", authLimiter, authRoutes);
 
 app.use("/api/items", itemRoutes);
 app.use("/items", itemRoutes);
@@ -91,6 +114,21 @@ app.get("/", (req, res) => {
   res.send("Barter API is running");
 });
 
+// Authenticate sockets using JWT sent in handshake auth.token
+io.use((socket, next) => {
+    try {
+        const token = socket.handshake.auth && socket.handshake.auth.token;
+        if (!token) return next(); // allow anonymous connections but won't be able to send messages
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        // attach user payload to socket
+        socket.data.user = decoded;
+        return next();
+    } catch (err) {
+        return next();
+    }
+});
+
 io.on("connection", (socket) => {
     socket.on("join-trade", (tradeId) => {
         if (tradeId) {
@@ -111,10 +149,12 @@ io.on("connection", (socket) => {
             const trade = await Trade.findById(tradeId);
             if (!trade) return;
 
-            const senderUser = await User.findById(message.sender);
-            const senderName = senderUser?.name || "Member";
+            // Determine sender from authenticated socket if available, otherwise fall back to provided sender
+            const senderId = socket.data?.user?.id || socket.data?.user?._id || message.sender;
+            const senderUser = senderId ? await User.findById(senderId) : null;
+            const senderName = senderUser?.name || message.senderName || "Member";
             const savedMessage = {
-                sender: message.sender,
+                sender: senderId || message.sender,
                 senderName,
                 text: message.text,
                 createdAt: new Date()

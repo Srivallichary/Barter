@@ -1,4 +1,15 @@
 import api from "./api";
+import { normalizeImageUrl } from "../utils/helpers";
+
+const mapItem = (item) => {
+  if (!item) return null;
+  return {
+    ...item,
+    id: item._id,
+    image: normalizeImageUrl(item.image),
+    images: Array.isArray(item.images) ? item.images.map(normalizeImageUrl) : [],
+  };
+};
 
 // ============================================================
 // Item Service — Real API endpoints
@@ -11,8 +22,8 @@ export const itemService = {
   // ──────────────────────────────────────────────
   getItems: async () => {
     const res = await api.get("/items");
-    const items = res.data.items || res.data || [];
-    return items.map((item) => ({ ...item, id: item._id }));
+    const items = (res.data && res.data.data && res.data.data.items) || [];
+    return items.map(mapItem).filter(Boolean);
   },
 
   // ──────────────────────────────────────────────
@@ -21,8 +32,8 @@ export const itemService = {
   // ──────────────────────────────────────────────
   getItem: async (id) => {
     const res = await api.get(`/items/${id}`);
-    const item = res.data.item || res.data;
-    return item ? { ...item, id: item._id } : null;
+    const item = (res.data && res.data.data && res.data.data.item) || null;
+    return mapItem(item);
   },
 
   // ──────────────────────────────────────────────
@@ -31,7 +42,7 @@ export const itemService = {
   // ──────────────────────────────────────────────
   createItem: async (itemData) => {
     const res = await api.post("/items", itemData);
-    const item = res.data.item || res.data;
+    const item = (res.data && res.data.data && res.data.data.item) || null;
     return item ? { ...item, id: item._id } : null;
   },
 
@@ -41,7 +52,7 @@ export const itemService = {
   // ──────────────────────────────────────────────
   updateItem: async (id, itemData) => {
     const res = await api.put(`/items/${id}`, itemData);
-    const item = res.data.item || res.data;
+    const item = (res.data && res.data.data && res.data.data.item) || null;
     return item ? { ...item, id: item._id } : null;
   },
 
@@ -60,7 +71,7 @@ export const itemService = {
   // ──────────────────────────────────────────────
   getMatches: async (id) => {
     const res = await api.get(`/items/matches/${id}`);
-    const matches = res.data.matches || res.data || [];
+    const matches = (res.data && res.data.data && res.data.data.matches) || (res.data && res.data.data && res.data.data.matches) || [];
     return matches.map((item) => ({ ...item, id: item._id }));
   },
 

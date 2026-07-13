@@ -5,11 +5,11 @@ const variants = {
   primary:
     "bg-[#51D95F] text-white hover:bg-[#3fc94c] active:bg-[#2fa53e] shadow-[0_4px_15px_rgba(81,217,95,0.15)] hover:shadow-[0_4px_25px_rgba(81,217,95,0.25)]",
   secondary:
-    "bg-slate-100/90 text-slate-700 hover:bg-slate-200 active:bg-slate-350",
+    "bg-slate-100/90 text-slate-700 hover:bg-slate-200 active:bg-slate-300",
   outline:
-    "border border-slate-300/80 bg-white/40 backdrop-blur-sm text-slate-750 hover:bg-white/80 active:bg-slate-100/60",
+    "border border-slate-300/80 bg-white/40 backdrop-blur-sm text-slate-700 hover:bg-white/80 active:bg-slate-100/60",
   ghost:
-    "text-slate-650 hover:bg-slate-100/50 active:bg-slate-200/50 hover:text-slate-900",
+    "text-slate-600 hover:bg-slate-100/50 active:bg-slate-200/50 hover:text-slate-900",
   danger:
     "bg-red-650 text-white hover:bg-red-750 active:bg-red-850 shadow-sm",
 };

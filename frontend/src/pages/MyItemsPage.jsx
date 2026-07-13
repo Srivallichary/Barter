@@ -63,13 +63,12 @@ function MyItemsPage() {
 
     try {
       setIsSaving(true);
-      const res = await api.post("/upload", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data"
-        }
-      });
-      const apiHost = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace("/api", "");
-      setImage(`${apiHost}${res.data.path}`);
+      const res = await api.post("/upload", formData);
+      const apiHost = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api\/?$/, "");
+      const uploadedImageUrl = res.data?.path && /^https?:\/\//i.test(res.data.path)
+        ? res.data.path
+        : `${apiHost}${res.data.path}`;
+      setImage(uploadedImageUrl);
       toast.success("Image uploaded successfully!");
     } catch (err) {
       toast.error("Failed to upload image. Max file size is 5MB, format: jpg, png, webp.");
@@ -86,16 +85,23 @@ function MyItemsPage() {
       setLoading(true);
       setError(null);
       try {
-        const allItems = await itemService.getItems();
+        let allItems = await itemService.getItems();
+        // Defensive: ensure we have an array
+        if (!Array.isArray(allItems)) {
+          allItems = (allItems && allItems.items) || (allItems && allItems.data && allItems.data.items) || [];
+        }
+
         const userItems = allItems.filter(
           (item) =>
-            item.owner === user.id ||
-            item.owner === user._id ||
-            item.owner?._id === user.id ||
-            item.owner?._id === user._id ||
-            item.owner?.name === user.name
+            item && (
+              item.owner === user.id ||
+              item.owner === user._id ||
+              item.owner?._id === user.id ||
+              item.owner?._id === user._id ||
+              item.owner?.name === user.name
+            )
         );
-        setItems(userItems);
+        setItems(userItems || []);
       } catch (err) {
         setError(err.message || "Failed to load listings");
       } finally {
@@ -293,7 +299,7 @@ function MyItemsPage() {
           </div>
         ) : items.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {items.map((item) => (
+            {(Array.isArray(items) ? items : []).map((item) => (
               <Card
                 key={item.id}
                 className="glass-card flex flex-col sm:flex-row overflow-hidden border border-white/35 transition-all duration-300 shadow-sm"
@@ -464,6 +470,14 @@ function MyItemsPage() {
               disabled={isSaving}
               className="block w-full text-xs text-slate-550 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition cursor-pointer disabled:opacity-50"
             />
+            {image && (
+              <div className="mt-3">
+                <p className="text-xs font-semibold text-slate-500 mb-2">Selected image preview</p>
+                <div className="w-full h-48 rounded-3xl overflow-hidden bg-slate-100 border border-slate-200">
+                  <img src={image} alt="Selected item preview" className="w-full h-full object-cover" />
+                </div>
+              </div>
+            )}
           </div>
 
           <div>

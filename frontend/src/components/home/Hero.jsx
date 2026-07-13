@@ -4,75 +4,55 @@ import Button from "../common/Button";
 
 function Hero() {
   const stats = [
-    { value: "1,200+", label: "Items Listed" },
-    { value: "850+", label: "Successful Swaps" },
-    { value: "2.4 Tons", label: "CO2 Saved (Est.)" },
+    { value: "1.2K+", label: "Live listings" },
+    { value: "850+", label: "Swaps completed" },
+    { value: "4.8★", label: "Average trust" },
   ];
 
   return (
-    <section className="relative overflow-hidden bg-white py-16 sm:py-20 border-b border-slate-100/50">
-      {/* Subtle top decoration grid */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px] pointer-events-none opacity-50" />
-      
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center space-y-6">
-        
-        {/* Subtle tagline badge */}
-        <div className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-slate-200/80 bg-slate-50 text-[11px] sm:text-xs uppercase font-extrabold text-slate-500 tracking-widest">
-          <Recycle size={14} className="text-indigo-500 animate-spin-slow" />
-          Eco-Friendly Community Exchange
-        </div>
+    <section className="relative overflow-hidden bg-gradient-to-b from-slate-100 via-white to-slate-50 py-20">
+      <div className="absolute inset-x-0 top-0 h-48 bg-[radial-gradient(circle_at_top_left,_rgba(81,217,95,0.14),_transparent_35%),radial-gradient(circle_at_top_right,_rgba(79,201,76,0.12),_transparent_34%)] pointer-events-none" />
+      <div className="absolute inset-x-0 bottom-0 h-40 bg-[radial-gradient(circle_at_bottom_left,_rgba(71,85,105,0.08),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(81,217,95,0.1),_transparent_32%)] pointer-events-none" />
 
-        {/* Headings */}
-        <div className="space-y-4">
-          <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-slate-900 leading-tight">
-            Trade Smarter. <br className="sm:hidden" />
-            <span className="bg-gradient-to-r from-indigo-650 to-indigo-500 bg-clip-text text-transparent">
-              Exchange Without Money.
-            </span>
-          </h1>
-          <p className="max-w-2xl mx-auto text-base sm:text-lg text-slate-500 leading-relaxed font-semibold">
-            Join a growing community where people exchange books, electronics, furniture, clothing, and more without spending money.
-          </p>
-        </div>
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid gap-10 lg:grid-cols-[1.15fr_0.85fr] items-center">
+          <div className="space-y-8">
+            <p className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 backdrop-blur-sm">
+              <Recycle size={16} className="text-emerald-500" />
+              Eco-friendly community trading
+            </p>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-950 leading-tight">
+              Trade better locally. <br className="hidden sm:inline" /> Keep value in your neighborhood.
+            </h1>
+            <p className="max-w-3xl text-base sm:text-lg text-slate-600 leading-8">
+              Discover nearby items, propose swap offers, and complete safe local trades with a community-first marketplace built for students and neighbors.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <Button to="/login" variant="primary" size="lg" icon={ArrowRight} iconPosition="right">
+                Explore listings
+              </Button>
+              <Button to="/signup" variant="outline" size="lg" className="text-slate-700 border-slate-300 hover:bg-white">
+                Start bartering
+              </Button>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              {stats.map((stat) => (
+                <div key={stat.label} className="rounded-3xl border border-slate-200 bg-white/90 p-5 shadow-sm">
+                  <p className="text-2xl font-black text-slate-950">{stat.value}</p>
+                  <p className="mt-2 text-[10px] uppercase tracking-[0.35em] text-slate-400">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row justify-center items-center gap-3 pt-2">
-          <Button
-            to="/login"
-            variant="primary"
-            size="md"
-            icon={ArrowRight}
-            iconPosition="right"
-            className="w-full sm:w-auto shadow-sm"
-          >
-            Explore Listings
-          </Button>
-          <Button
-            to="/signup"
-            variant="outline"
-            size="md"
-            className="w-full sm:w-auto"
-          >
-            Start Bartering
-          </Button>
-        </div>
-
-        {/* Statistics dashboard row */}
-        <div className="pt-10 border-t border-slate-100/80 max-w-xl mx-auto">
-          <div className="grid grid-cols-3 gap-8">
-            {stats.map((stat, idx) => (
-              <div key={idx} className="space-y-1">
-                <p className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                  {stat.value}
-                </p>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-450">
-                  {stat.label}
-                </p>
-              </div>
-            ))}
+          <div className="relative rounded-[2rem] overflow-hidden border border-slate-200 bg-white shadow-[0_25px_75px_rgba(15,23,42,0.08)]">
+            <img
+              src="https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=1000&q=80"
+              alt="Community bartering"
+              className="h-full w-full object-cover min-h-[420px]"
+            />
           </div>
         </div>
-
       </div>
     </section>
   );

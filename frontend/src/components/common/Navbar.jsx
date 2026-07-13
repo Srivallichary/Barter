@@ -34,7 +34,7 @@ function Navbar() {
     `relative py-2 text-xs sm:text-sm font-bold uppercase tracking-widest transition-colors duration-250 cursor-pointer ${
       isActive
         ? "text-[#51D95F] font-extrabold"
-        : "text-slate-550 hover:text-slate-900"
+        : "text-slate-600 hover:text-slate-900"
     }`;
 
   return (

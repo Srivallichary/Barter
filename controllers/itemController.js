@@ -1,6 +1,28 @@
 const mongoose = require("mongoose");
 const Item = require("../models/item");
 
+const buildMediaUrl = (filePathOrUrl, req) => {
+    if (!filePathOrUrl) return "";
+    if (/^https?:\/\//i.test(filePathOrUrl)) return filePathOrUrl;
+    if (filePathOrUrl.startsWith("/uploads")) {
+        return `${req.protocol}://${req.get("host")}${filePathOrUrl}`;
+    }
+    if (filePathOrUrl.startsWith("uploads")) {
+        return `${req.protocol}://${req.get("host")}/${filePathOrUrl}`;
+    }
+    return filePathOrUrl;
+};
+
+const normalizeItem = (item, req) => {
+    if (!item) return item;
+    const normalized = item.toObject ? item.toObject() : { ...item };
+    normalized.image = buildMediaUrl(normalized.image, req);
+    if (Array.isArray(normalized.images)) {
+        normalized.images = normalized.images.map((img) => buildMediaUrl(img, req));
+    }
+    return normalized;
+};
+
 const getRequesterId = (req) => req.user?.userId || req.user?.id || req.user?._id;
 
 /**
@@ -46,7 +68,7 @@ const createItem = async (req, res) => {
         return res.status(201).json({
             success: true,
             message: "Item created successfully",
-            data: { item }
+            data: { item: normalizeItem(item, req) }
         });
     } catch (error) {
         return res.status(500).json({
@@ -98,7 +120,7 @@ const getAllItems = async (req, res) => {
             success: true,
             message: "Items retrieved successfully",
             data: {
-                items,
+                items: items.map((item) => normalizeItem(item, req)),
                 count: items.length
             }
         });
@@ -136,7 +158,7 @@ const getItemById = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: "Item retrieved successfully",
-            data: { item }
+            data: { item: normalizeItem(item, req) }
         });
     } catch (error) {
         return res.status(500).json({
@@ -209,7 +231,7 @@ const updateItem = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: "Item updated successfully",
-            data: { item: updatedItem }
+            data: { item: normalizeItem(updatedItem, req) }
         });
     } catch (error) {
         return res.status(500).json({
@@ -306,7 +328,7 @@ const getSmartMatches = async (req, res) => {
             success: true,
             message: "Matches retrieved successfully",
             data: {
-                matches,
+                matches: matches.map((item) => normalizeItem(item, req)),
                 count: matches.length
             }
         });

@@ -29,7 +29,7 @@ function SectionTitle({
       {subtitle && (
         <p
           className={`
-            mt-3 text-lg text-slate-500 leading-relaxed
+            mt-4 text-base text-slate-500 leading-8 max-w-3xl mx-auto
             ${subtitleClassName}
           `}
         >
