@@ -308,7 +308,7 @@ function ProfilePage() {
           <Input
             label="Full Name"
             type="text"
-            placeholder="Sarah Jenkins"
+            placeholder="Your Name"
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
             error={formErrors.name}

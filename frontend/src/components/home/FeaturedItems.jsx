@@ -29,6 +29,7 @@ function FeaturedItems({
   title,
   hideTitle = false,
   customItems,
+  excludeUserId
 }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -56,18 +57,27 @@ function FeaturedItems({
     fetchItems();
   }, [customItems]);
 
-  const filteredItems = items.filter((item) => {
-    const query = searchTerm.toLowerCase();
-    const matchesSearch =
-      item.title.toLowerCase().includes(query) ||
-      item.description.toLowerCase().includes(query) ||
-      item.lookingFor.toLowerCase().includes(query);
+  const isOwnedByCurrentUser = (item) => {
+    if (!excludeUserId) return false;
+    const ownerId = item.owner?._id || item.owner?.id || item.owner;
+    return String(ownerId) === String(excludeUserId);
+  };
 
-    const matchesCategory =
-      selectedCategory === "All" || item.category === selectedCategory;
+  const filteredItems = items
+    .filter((item) => !isOwnedByCurrentUser(item))
+    .filter((item) => {
+      const matchesSearch =
+        item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.lookingFor.toLowerCase().includes(searchTerm.toLowerCase());
 
-    return matchesSearch && matchesCategory;
-  });
+      const matchesCategory =
+        selectedCategory === "All" || item.category === selectedCategory;
+
+      return matchesSearch && matchesCategory;
+    });
+
+  const isDatabaseEmpty = !loading && !error && items.length === 0;
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -94,6 +104,12 @@ function FeaturedItems({
             <p className="text-sm text-slate-500">{error}</p>
           </Card>
         </div>
+      ) : isDatabaseEmpty ? (
+        <EmptyState
+          icon={Inbox}
+          title="No items available yet."
+          description="Be the first to list an item! Real swap listings will appear here as soon as someone adds them."
+        />
       ) : filteredItems.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredItems.map((item) => (
@@ -103,8 +119,8 @@ function FeaturedItems({
       ) : (
         <EmptyState
           icon={Inbox}
-          title="No items match your search"
-          description="Clear your filters or try a broader search term to see more listings."
+          title="No match found"
+          description="We couldn't find any items matching your filters. Try checking other categories or clearing your search query."
         />
       )}
     </section>

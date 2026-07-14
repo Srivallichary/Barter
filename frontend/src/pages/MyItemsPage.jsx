@@ -85,29 +85,15 @@ function MyItemsPage() {
       setLoading(true);
       setError(null);
       try {
-        let allItems = await itemService.getItems();
-        // Defensive: ensure we have an array
-        if (!Array.isArray(allItems)) {
-          allItems = (allItems && allItems.items) || (allItems && allItems.data && allItems.data.items) || [];
-        }
-
-        const userItems = allItems.filter(
-          (item) =>
-            item && (
-              item.owner === user.id ||
-              item.owner === user._id ||
-              item.owner?._id === user.id ||
-              item.owner?._id === user._id ||
-              item.owner?.name === user.name
-            )
-        );
-        setItems(userItems || []);
+        const userItems = await itemService.getMyItems();
+        setItems(userItems);
       } catch (err) {
         setError(err.message || "Failed to load listings");
       } finally {
         setLoading(false);
       }
     };
+
 
     fetchMyItems();
   }, [user]);
@@ -192,7 +178,6 @@ function MyItemsPage() {
     e.preventDefault();
     if (!validateForm()) return;
 
-    // Standard fallback photos depending on category
     const categoryImages = {
       Textbooks: "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=600&auto=format&fit=crop&q=80",
       Electronics: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&auto=format&fit=crop&q=80",
@@ -207,7 +192,6 @@ function MyItemsPage() {
     setIsSaving(true);
     try {
       if (editingItem) {
-        // Edit mode
         const updated = await itemService.updateItem(editingItem.id, {
           title,
           category,
@@ -215,14 +199,14 @@ function MyItemsPage() {
           lookingFor,
           image: finalImage
         });
-        setItems(
-          items.map((item) =>
+
+        setItems((currentItems) =>
+          currentItems.map((item) =>
             item.id === editingItem.id ? updated : item
           )
         );
         toast.success(`Updated listing: ${title}`);
       } else {
-        // Create mode
         const newItem = await itemService.createItem({
           title,
           category,
@@ -232,8 +216,13 @@ function MyItemsPage() {
           condition: "Like New",
           location: user.department || "Madhapur, Hyderabad"
         });
-        setItems([newItem, ...items]);
-        toast.success(`Listed item: ${title}`, { icon: "📦" });
+
+        if (newItem) {
+          setItems((currentItems) => [newItem, ...currentItems]);
+          toast.success(`Listed item: ${title}`, { icon: "📦" });
+        } else {
+          throw new Error("Unexpected response from server when creating item.");
+        }
       }
       setIsModalOpen(false);
     } catch (err) {

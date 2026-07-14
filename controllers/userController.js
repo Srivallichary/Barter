@@ -199,6 +199,31 @@ const getPendingVerifications = async (req, res) => {
     }
 };
 
+const deleteProfile = async (req, res) => {
+    try {
+        const userId = getRequesterId(req);
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication required"
+            });
+        }
+
+        await User.findByIdAndDelete(userId);
+
+        return res.status(200).json({
+            success: true,
+            message: "Account and all associated data have been deleted successfully"
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to delete account"
+        });
+    }
+};
+
 const reviewVerification = async (req, res) => {
     try {
         const userId = getRequesterId(req);
@@ -243,6 +268,7 @@ module.exports = {
     updateProfile,
     uploadIdCard,
     getPendingVerifications,
+    deleteProfile,
     reviewVerification,
     profile: getProfile,
     ratings: getRatings

@@ -126,12 +126,10 @@ const getUserTrades = async (req, res) => {
             });
         }
 
-        const userId = req.params.userId || requesterId;
-
         const trades = await Trade.find({
             $or: [
-                { fromUser: userId },
-                { toUser: userId }
+                { fromUser: requesterId },
+                { toUser: requesterId }
             ]
         })
             .populate("fromUser", "name email avatar")

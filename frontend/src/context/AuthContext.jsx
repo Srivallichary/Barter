@@ -21,6 +21,8 @@ export function AuthProvider({ children }) {
     try {
       const token = getToken();
       if (!token) {
+        removeToken();
+        localStorage.removeItem(USER_STORAGE_KEY);
         setUser(null);
         setLoading(false);
         return;
@@ -33,21 +35,18 @@ export function AuthProvider({ children }) {
           profileData?.data?.user ||
           profileData?.user ||
           profileData;
-        setUser(freshUser);
 
-        // Update cached copy
+        if (!freshUser) {
+          throw new Error("Invalid user profile response");
+        }
+
+        setUser(freshUser);
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(freshUser));
       } catch {
-        // API failed (server down, token expired, etc.)
-        // Fall back to cached user data
-        const cached = localStorage.getItem(USER_STORAGE_KEY);
-        if (cached) {
-          setUser(JSON.parse(cached));
-        } else {
-          // No cache either — clear everything
-          removeToken();
-          setUser(null);
-        }
+        // Profile fetch failed. Clear stale cache and treat the user as unauthenticated.
+        removeToken();
+        localStorage.removeItem(USER_STORAGE_KEY);
+        setUser(null);
       }
     } catch {
       removeToken();

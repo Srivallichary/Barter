@@ -35,7 +35,7 @@ const register = async (req, res) => {
         });
 
         // Generate JWT token so the new user can use the app immediately
-        const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
+        const token = jwt.sign({ id: user._id, userId: user._id, role: user.role }, process.env.JWT_SECRET, {
             expiresIn: "24h"
         });
 
@@ -109,7 +109,7 @@ const login = async (req, res) => {
         }
 
         // Generate JWT token
-        const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
+        const token = jwt.sign({ id: user._id, userId: user._id, role: user.role }, process.env.JWT_SECRET, {
             expiresIn: "24h"
         });
 

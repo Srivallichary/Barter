@@ -6,6 +6,7 @@ const router = express.Router();
 const {
     createItem,
     getAllItems,
+    getMyItems,
     getItemById,
     updateItem,
     deleteItem,
@@ -15,8 +16,11 @@ const {
 // Create Item
 router.post("/", auth, upload.single("image"), createItem);
 
-// Get All Items
+// Get all marketplace items
 router.get("/", getAllItems);
+
+// Get current user's own items
+router.get("/me", auth, getMyItems);
 
 // Get Smart Matches
 router.get("/matches/:id", auth, getSmartMatches);

@@ -33,7 +33,7 @@ const getRequesterId = (req) => req.user?.userId || req.user?.id || req.user?._i
 const createItem = async (req, res) => {
     try {
         const { title, description, category, condition, location, tags, estimatedValue, status, image } = req.body;
-        const owner = req.body.owner || getRequesterId(req);
+        const owner = getRequesterId(req);
         const images = req.files
             ? req.files.map((file) => file.filename)
             : req.file
@@ -44,10 +44,17 @@ const createItem = async (req, res) => {
                         ? [req.body.image]
                         : [];
 
-        if (!title || !description || !category || !owner) {
+        if (!title || !description || !category) {
             return res.status(400).json({
                 success: false,
-                message: "Please provide title, description, category and owner"
+                message: "Please provide title, description and category"
+            });
+        }
+
+        if (!owner) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication required to create item"
             });
         }
 
@@ -91,11 +98,20 @@ const getAllItems = async (req, res) => {
         if (category) query.category = category;
         if (condition) query.condition = condition;
         if (location) query.location = location;
-        if (status) query.status = status;
+        if (status) {
+            query.status = status;
+        } else {
+            // Only show available listings by default in the public marketplace
+            query.status = "available";
+        }
+
         if (owner) {
             query.owner = mongoose.Types.ObjectId.isValid(owner)
                 ? new mongoose.Types.ObjectId(owner)
                 : owner;
+        } else {
+            // Hide stale/orphaned listings that no longer have a valid owner reference
+            query.owner = { $exists: true, $ne: null };
         }
 
         if (keyword) {
@@ -128,6 +144,41 @@ const getAllItems = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: error.message || "Failed to fetch items"
+        });
+    }
+};
+
+/**
+ * @desc    Get items belonging to the authenticated user
+ * @route   GET /api/items/me
+ * @access  Private
+ */
+const getMyItems = async (req, res) => {
+    try {
+        const requesterId = getRequesterId(req);
+
+        if (!requesterId) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication required"
+            });
+        }
+
+        const query = { owner: mongoose.Types.ObjectId(requesterId) };
+        const items = await Item.find(query).sort({ createdAt: -1 }).populate("owner", "name email avatar");
+
+        return res.status(200).json({
+            success: true,
+            message: "User items retrieved successfully",
+            data: {
+                items,
+                count: items.length
+            }
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to fetch user items"
         });
     }
 };
@@ -343,6 +394,7 @@ const getSmartMatches = async (req, res) => {
 module.exports = {
     createItem,
     getAllItems,
+    getMyItems,
     getItemById,
     updateItem,
     deleteItem,

@@ -143,7 +143,7 @@ function SignupPage() {
               <InputField
                 label="Username"
                 type="text"
-                placeholder="Sarah_Jenkins"
+                placeholder="your_username"
                 icon={User}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}

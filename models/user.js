@@ -1,6 +1,52 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 
+async function cascadeDeleteUserData(userId) {
+  if (!userId) return;
+
+  const Item = mongoose.model('Item');
+  const Trade = mongoose.model('Trade');
+  const Message = mongoose.model('Message');
+  const Notification = mongoose.model('Notification');
+  const Wishlist = mongoose.model('Wishlist');
+
+  const itemIds = await Item.find({ owner: userId }).distinct('_id');
+  const tradeIds = await Trade.find({
+    $or: [{ fromUser: userId }, { toUser: userId }]
+  }).distinct('_id');
+
+  await Message.deleteMany({
+    $or: [
+      { sender: userId },
+      { receiver: userId },
+      { trade: { $in: tradeIds } }
+    ]
+  });
+
+  await Notification.deleteMany({
+    $or: [
+      { user: userId },
+      { relatedTrade: { $in: tradeIds } },
+      { relatedItem: { $in: itemIds } }
+    ]
+  });
+
+  await Wishlist.deleteMany({ user: userId });
+
+  if (itemIds.length > 0) {
+    await Wishlist.updateMany(
+      { items: { $in: itemIds } },
+      { $pull: { items: { $in: itemIds } } }
+    );
+  }
+
+  await Trade.deleteMany({
+    $or: [{ fromUser: userId }, { toUser: userId }]
+  });
+
+  await Item.deleteMany({ owner: userId });
+}
+
 // 1. Define the SCHEMA (blueprint of what a User looks like)
 const userSchema = new mongoose.Schema(
   {

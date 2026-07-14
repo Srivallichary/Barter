@@ -63,7 +63,7 @@ function LoginPage() {
         navigate(location.state?.from?.pathname || "/", { replace: true });
       }, 1200);
     } catch (err) {
-      toast.error(err.message || "Invalid credentials. Try Sarah101 / 123456.");
+      toast.error(err.message || "Invalid credentials. Please check your credentials and try again.");
     } finally {
       setIsLoading(false);
     }
@@ -93,7 +93,7 @@ function LoginPage() {
           <InputField
             label="Username"
             type="text"
-            placeholder="Sarah_J"
+            placeholder="your_username"
             icon={User}
             value={username}
             onChange={(e) => setUsername(e.target.value)}

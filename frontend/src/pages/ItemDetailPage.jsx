@@ -78,11 +78,11 @@ function ItemDetailPage() {
         const savedWishlist = await wishlistService.getWishlist();
         setWishlist(savedWishlist);
 
-        // Load user's items for swap list
+        // Load user's own available items for swap selection
         if (user) {
-          const allItems = await itemService.getItems();
-          const filteredUserItems = allItems.filter(i => i.owner === user.id || i.owner === user._id);
-          setUserItems(filteredUserItems);
+          const myItems = await itemService.getMyItems();
+          const availableMyItems = myItems.filter((item) => item.status === "available");
+          setUserItems(availableMyItems);
         }
       } catch (err) {
         setError(err.message || "Failed to load listing details");
@@ -320,13 +320,21 @@ function ItemDetailPage() {
 
             {/* Swap Trigger Call-to-action */}
             {!isOwner && (
-              <div className="pt-6">
+              <div className="pt-6 grid gap-3 sm:grid-cols-2">
                 <Button
                   onClick={() => setIsTradeModalOpen(true)}
                   variant="primary"
                   className="w-full py-4 text-sm sm:text-base uppercase tracking-widest font-black bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-500/10"
                 >
-                  Propose Swap Deal
+                  Request Trade
+                </Button>
+                <Button
+                  to="/trades"
+                  variant="secondary"
+                  icon={MessageSquare}
+                  className="w-full py-4 text-sm sm:text-base uppercase tracking-widest font-black"
+                >
+                  Chat Seller
                 </Button>
               </div>
             )}
@@ -407,7 +415,7 @@ function ItemDetailPage() {
             ) : (
               <div className="border border-dashed border-slate-250 p-6 rounded-2xl text-center space-y-3">
                 <p className="text-xs text-slate-500">
-                  You don't have any items listed in your inventory. Add a listing first to make swap offers.
+                  You need at least one listed item before requesting a trade.
                 </p>
                 <Button to="/my-items" variant="outline" size="sm">
                   Add a Listing

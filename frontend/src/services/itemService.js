@@ -15,15 +15,36 @@ const mapItem = (item) => {
 // Item Service — Real API endpoints
 // ============================================================
 
+const extractItems = (res) => {
+  const payload = res.data?.data?.items || res.data?.items || res.data || [];
+  return Array.isArray(payload) ? payload : [];
+};
+
+const extractItem = (res) => {
+  const payload = res.data?.data?.item || res.data?.item || res.data;
+  return payload || null;
+};
+
 export const itemService = {
   // ──────────────────────────────────────────────
   // REAL API: GET /api/items
-  // Returns all items in the marketplace, mapping _id to id
+  // Returns items in the marketplace, mapping _id to id
+  // Accepts optional query parameters for filtering.
   // ──────────────────────────────────────────────
-  getItems: async () => {
-    const res = await api.get("/items");
-    const items = (res.data && res.data.data && res.data.data.items) || [];
-    return items.map(mapItem).filter(Boolean);
+  getItems: async (query = {}) => {
+    const res = await api.get("/items", { params: query });
+    const items = extractItems(res);
+    return items.map((item) => ({ ...item, id: item._id }));
+  },
+
+  // ──────────────────────────────────────────────
+  // REAL API: GET /api/items/me
+  // Returns the authenticated user's items only
+  // ──────────────────────────────────────────────
+  getMyItems: async () => {
+    const res = await api.get("/items/me");
+    const items = extractItems(res);
+    return items.map((item) => ({ ...item, id: item._id }));
   },
 
   // ──────────────────────────────────────────────
@@ -32,8 +53,8 @@ export const itemService = {
   // ──────────────────────────────────────────────
   getItem: async (id) => {
     const res = await api.get(`/items/${id}`);
-    const item = (res.data && res.data.data && res.data.data.item) || null;
-    return mapItem(item);
+    const item = extractItem(res);
+    return item ? { ...item, id: item._id } : null;
   },
 
   // ──────────────────────────────────────────────
@@ -42,7 +63,7 @@ export const itemService = {
   // ──────────────────────────────────────────────
   createItem: async (itemData) => {
     const res = await api.post("/items", itemData);
-    const item = (res.data && res.data.data && res.data.data.item) || null;
+    const item = extractItem(res);
     return item ? { ...item, id: item._id } : null;
   },
 
@@ -52,7 +73,7 @@ export const itemService = {
   // ──────────────────────────────────────────────
   updateItem: async (id, itemData) => {
     const res = await api.put(`/items/${id}`, itemData);
-    const item = (res.data && res.data.data && res.data.data.item) || null;
+    const item = extractItem(res);
     return item ? { ...item, id: item._id } : null;
   },
 
@@ -71,8 +92,10 @@ export const itemService = {
   // ──────────────────────────────────────────────
   getMatches: async (id) => {
     const res = await api.get(`/items/matches/${id}`);
-    const matches = (res.data && res.data.data && res.data.data.matches) || (res.data && res.data.data && res.data.data.matches) || [];
-    return matches.map((item) => ({ ...item, id: item._id }));
+    const matches = res.data?.data?.matches || res.data?.matches || res.data || [];
+    return Array.isArray(matches)
+      ? matches.map((item) => ({ ...item, id: item._id }))
+      : [];
   },
 
   // ──────────────────────────────────────────────

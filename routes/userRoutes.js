@@ -7,6 +7,7 @@ const {
     getProfile,
     getRatings,
     updateProfile,
+    deleteProfile,
     profile,
     ratings,
     uploadIdCard,
@@ -18,6 +19,7 @@ router.get("/profile", auth, getProfile);
 router.get("/ratings", auth, getRatings);
 router.put("/profile", auth, updateProfile);
 router.post("/upload-id-card", auth, upload.single('idCard'), uploadIdCard);
+router.delete("/profile", auth, deleteProfile);
 router.get("/verification/pending", auth, getPendingVerifications);
 router.post("/verification/:userId", auth, reviewVerification);
 router.get("/:id/profile", auth, profile);

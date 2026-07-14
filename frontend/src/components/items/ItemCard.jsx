@@ -7,14 +7,12 @@ import Avatar from "../common/Avatar";
 import Button from "../common/Button";
 
 function ItemCard({ item, onRequestTrade }) {
-  const { id, title, category, owner, ownerAvatar, image, lookingFor, description } = item;
+  const { id, title, category, owner, ownerAvatar, image, lookingFor, description, condition, location } = item;
   const [isFavorited, setIsFavorited] = useState(false);
 
-  // Mocking conditions and locations for Airbnb style cards
-  const mockConditions = ["Like New", "Excellent", "Good", "Fair"];
-  const itemCondition = mockConditions[id % mockConditions.length] || "Good";
-  const ownerLocation = id % 2 === 0 ? "Downtown Area" : "West End Area";
-  const ownerRating = (4.5 + (id % 6) * 0.1).toFixed(1);
+  const itemCondition = condition || "Good";
+  const ownerLocation = location || "Nearby Area";
+  const ownerRating = owner?.rating ? Number(owner.rating).toFixed(1) : "4.8";
 
   const handleFavoriteClick = (e) => {
     e.preventDefault();

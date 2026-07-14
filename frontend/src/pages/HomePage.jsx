@@ -109,7 +109,8 @@ function HomePage() {
               searchTerm={searchTerm}
               selectedCategory={selectedCategory}
               onRequestTrade={handleRequestTrade}
-              title="Top swap picks"
+              hideTitle={true}
+              excludeUserId={user?.id || user?._id}
             />
           </div>
         </div>
